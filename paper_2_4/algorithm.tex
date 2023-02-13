@@ -71,7 +71,7 @@ where $v_n$ is the output of second order FIR filter.
 \subsubsection{Non-transposed multi-block filtering of FIR}
 
 It is easy to apply the multi-block filtering method on FIR filter 
-because of no dependency. The algorithm that computes the output of second order FIR filter 
+because of no dependency. The function that computes the output of second order FIR filter 
 with non-transposed matrix of data is given by
 
 \begin{equation}
@@ -138,7 +138,7 @@ to get the entire $\bm{V}$.
 
 \subsubsection{Transposed multi-block filtering of FIR}
 Next, We provide another solution to computing the output of second order FIR filter, which is based on transposed
-matrix version of data. The algorithm also exhibits both intra-block and inter-block parallelism and is given by
+matrix version of data. The function also exhibits both intra-block and inter-block parallelism and is given by
 
 \begin{equation}
     \label{eq:FIR_block_filtering_w_trans}
@@ -224,12 +224,12 @@ the rest of terms are the homogeneous part of the second order IIR equation.
 % missing some contents of literature
 In this paper, we first calculate the particular solution by zeroing the homogenous part, where
 the process is called zero initial condition (ZIC). After that, we correct the initial conditions (homogeneous part) for
-getting the complete output. The latter process is called initial condition correction (ICC). Note, the above algorithms
+getting the complete output. The latter process is called initial condition correction (ICC). Note, the above functions
 are all processed by multi-block filtering method.
 
 \subsubsection{Transposed zero initial condition (ZIC)}
 
-From \eqref{eq:iir_filter_with_first_samples}, the algorithm that computes the particular solution 
+From \eqref{eq:iir_filter_with_first_samples}, the function that computes the particular solution 
 of second order IIR filter with transposed matrix of data is given by
 
 \begin{equation}
@@ -352,7 +352,7 @@ If we re-write \eqref{eq:ZIC_w_trans} with non-transposed data version, i.e.,
 \end{equation}
 We can see that \eqref{eq:ZIC_wo_trans} can no longer be computed among multiple blocks. This is because
 the dependency problem now occurs inside each block instead of happening among blocks as \eqref{eq:ZIC_w_trans}.
-However, \eqref{eq:ZIC_wo_trans} can still achieve intra-block parallelism by block-filtering algorithm based on \eqref{eq:iir_filter_with_first_samples} as shown below
+However, \eqref{eq:ZIC_wo_trans} can still achieve intra-block and inter-block parallelism by block-filtering method based on \eqref{eq:iir_filter_with_first_samples} as shown below
 
 \begin{equation}
     \label{eq:vector_ZIC_wo_trans}
@@ -415,7 +415,7 @@ $\bm{W}^T$ from \eqref{eq:ZIC_w_trans} without matrix transpose.
 After computing the particular solution of second order IIR filter, we now compensate for the 
 initial conditions to get the complete solution. Recall that the output matrix of ZIC in either \eqref{eq:ZIC_w_trans} or
 \eqref{eq:vector_ZIC_wo_trans} only has partial particular solution. Thus, based on \eqref{eq:iir_filter_with_first_samples} and along with ZIC,
-the algorithm that computes the homogeneous solution of second order
+the function that computes the homogeneous solution of second order
 IIR filter with non-transposed matrix of data is given by 
 
 \begin{equation}
@@ -530,7 +530,7 @@ in transposed version, i.e.,
 Compared with \eqref{eq:ICC_wo_trans}, we need one extra step to process \eqref{eq:ICC_w_trans} 
 that is to compute the two initial-condition vectors in $\bm{Y}_p^T$. The two initial conditions
 can be computed at first since they only depend on $\bm{W}$ and the two pre-states $y_{-2}$ and $y_{-1}$.
-Thus, the algorithm of calculating $\bm{Y}_p^T$ is given by
+Thus, the function of calculating $\bm{Y}_p^T$ is given by
 
 \begin{equation}
     \label{eq:ICC_init_w_trans}
@@ -708,5 +708,5 @@ how matrix transpose is performed in SIMD operation. In this paper, the matrix t
 
 4. Swap anti-diagonally adjacent elements to get $\bm{X}^T$.
 
-It can be seen that the entire process of matrix transpose in SIMD operation requires $M\log(M)$
+It can be seen that the entire process of matrix transpose in SIMD operation requires $M{\log_2}M$
 shuffles.

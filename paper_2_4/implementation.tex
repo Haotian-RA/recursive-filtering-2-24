@@ -1,0 +1,254 @@
+\section{Implementation and Optimization}
+\label{sec:implementation}
+
+\subsection{Combination of a second (or higher) order IIR core}
+
+\subsubsection{The second order IIR core}
+
+\begin{table}[t]
+    \caption{The number of instructions for base functions in IIR filter}  % title of Table
+    \centering % used for centering table
+    \begin{tabular}{c c c c c c} % centered columns (4 columns)
+    \hline\hline %inserts double horizontal lines
+    function name & FMA & shuffle & broadcast & load & store \\ [1ex] % inserts table
+    \hline % inserts single horizontal line
+    Transposed FIR & $2M$ & 4 & 2 & $M{+}2$ & $M$ \\ [0.3ex]
+    Non-trans FIR & $2M$ & $2M$ & 2 & $M{+}2$ & $M{+}1$ \\ [0.3ex]
+    Transposed ZIC & $2M{-}3$ & 0 & 2 & $M{+}2$ & $M$ \\ [0.3ex]
+    Non-trans ZIC & $M^2$ & 0 & $M^2$ & $2M$ & $M$ \\ [0.3ex]
+    Transposed ICC & $6M$ & 4 & $4M{+}6$ & $5M{+}6$ & $M{+}4$ \\ [0.3ex]
+    Non-trans ICC & $2M$ & 0 & $2M$ & $M{+}2$ & $M$ \\ [0.3ex]
+    Matrix transpose & 0 & $M{\log_2}M$ & 0 & $M$ & $M$ \\ [1ex]
+    \hline
+    \end{tabular}
+    \label{table:number_of_instructions} % is used to refer this table in the text
+\end{table}
+
+In the previous section, a lot of base functions of composing a second order IIR core by passing transposed or non-transposed data is introduced.
+We now count for the number of FMAs, shuffles, broadcast, load and store operations for each base function
+as shown in Table \ref{table:number_of_instructions}. Based on the number of instructions (FMAs and shuffles) for each function,
+we list three significant combinations of a second order IIR filter and compute the total number of instructions as follows: 
+
+1. Core 1: all passed non-transposed data. 
+\begin{equation*}
+    \label{eq:iir_core_1_all_non}
+    % \bm{X} = \left[\begin{array}{c|c|c|c}
+    % x[0] & x[M] & \cdots & x[M^2{-}M] \\ 
+    % x[1] & x[M{+}1] & \cdots & x[M^2{-}M{+}1] \\
+    % \vdots & \vdots & \ddots & \vdots \\
+    % x[M{-}1] & x[2M{-}1] &\cdots & x[M^2{-}1] \\
+    % \end{array}\right]
+        \begin{array}{c|c|c|c|c|c|c}
+            \cline{2-2}
+            \cline{4-4}
+            \cline{6-6}
+            \underrightarrow{\bm{X}} & \text{FIR} & \underrightarrow{\bm{V}} & \text{ZIC} & \underrightarrow{\bm{W}} & \text{ICC} & \underrightarrow{\bm{Y}} \\
+            \cline{2-2}
+            \cline{4-4}
+            \cline{6-6}
+    \end{array}
+\end{equation*}
+
+2. Core 2: all passed transposed data.
+\begin{equation*}
+    \label{eq:iir_core_2_all_trans}
+    \begin{aligned}
+    % \bm{X} = \left[\begin{array}{c|c|c|c}
+    % x[0] & x[M] & \cdots & x[M^2{-}M] \\ 
+    % x[1] & x[M{+}1] & \cdots & x[M^2{-}M{+}1] \\
+    % \vdots & \vdots & \ddots & \vdots \\
+    % x[M{-}1] & x[2M{-}1] &\cdots & x[M^2{-}1] \\
+    % \end{array}\right]
+    & \underrightarrow{\bm{X}} \\
+        & \begin{array}{|c|c|c|c|c|c|c|c|c|c}
+            \cline{1-1}
+            \cline{3-3}
+            \cline{5-5}
+            \cline{7-7}
+            \cline{9-9}
+            \text{T} & \underrightarrow{\bm{X}^T} & \text{T FIR} & \underrightarrow{\bm{V}^T} & \text{T ZIC} & \underrightarrow{\bm{W}^T} & \text{T ICC} & \underrightarrow{\bm{Y}^T} & \text{T} & \underrightarrow{\bm{Y}} \\
+            \cline{1-1}
+            \cline{3-3}
+            \cline{5-5}
+            \cline{7-7}
+            \cline{9-9}
+    \end{array}
+\end{aligned}
+\end{equation*}
+
+3. Core 3: only ICC passed non-transposed data.
+\begin{equation*}
+    \label{eq:iir_core_3_icc_non_trans}
+    \begin{aligned}
+    % \bm{X} = \left[\begin{array}{c|c|c|c}
+    % x[0] & x[M] & \cdots & x[M^2{-}M] \\ 
+    % x[1] & x[M{+}1] & \cdots & x[M^2{-}M{+}1] \\
+    % \vdots & \vdots & \ddots & \vdots \\
+    % x[M{-}1] & x[2M{-}1] &\cdots & x[M^2{-}1] \\
+    % \end{array}\right]
+    % & \underrightarrow{\bm{X}} \\
+        & \begin{array}{c|c|c|c|c|c|c|c|c|c|c}
+            \cline{2-2}
+            \cline{4-4}
+            \cline{6-6}
+            \cline{8-8}
+            \cline{10-10}
+            \underrightarrow{\bm{X}} & \text{T} & \underrightarrow{\bm{X}^T} & \text{T FIR} & \underrightarrow{\bm{V}^T} & \text{T ZIC} & \underrightarrow{\bm{W}^T} & \text{T} & \underrightarrow{\bm{W}} & \text{ICC} & \underrightarrow{\bm{Y}} \\
+            \cline{2-2}
+            \cline{4-4}
+            \cline{6-6}
+            \cline{8-8}
+            \cline{10-10}
+    \end{array}
+\end{aligned}
+\end{equation*}
+The total cost for three cores are: $M^2{+}6M$, $2M{\log_2}M{+}10M{+}5$, $2M{\log_2}M{+}6M{+}1$, respectively.
+Normally, the length of SIMD vector is short, e.g., 4 or 8. Let's assume $M=8$ to achieve the better
+parallelism. Thus, the cost for three cores are calculated as 112, 133 and 97.
+
+If we consider the basic situation, i.e., a single CPU and single thread are used, core 3 should be
+the most instruction-saving. The feature of core 2 is that the two matrix transpose functions exist at the tail and head.
+If we construct a higher order IIR filter by cascading multiple second order IIR cores, the two matrix transpose functions
+at the tail and head can be cancelled out. In this case, the cost for core 2 can be then reduced to $10M{+}5=85$, which is cheaper
+than core 3. The advantage of core 1 is straightforward thus avoids two matrix transpose functions.
+Furthermore, if we consider a multi-CPU and multi-thread environment, the most expensive function of core 1, i.e., non-transposed ZIC,
+can be executed by inter-block parallelism and the real number of instructions can be reduce from $M^2$ to $M$. In this case, core 1 will be the most instruction-saving.
+
+\subsubsection{The higher order IIR system}
+
+Let's discuss the higher order IIR system by cascading the proposed three second order IIR cores.
+Take fourth order IIR system as an example.
+Again, if multiple CPUs and threads are used, the cascade of core 1 will be the most efficient. 
+If not, the most instruction-saving combination is core 2 followed by core 3, i.e.,
+
+\begin{equation*}
+    \label{eq:iir_system_4_core2_core3}
+    \begin{aligned}
+    % \bm{X} = \left[\begin{array}{c|c|c|c}
+    % x[0] & x[M] & \cdots & x[M^2{-}M] \\ 
+    % x[1] & x[M{+}1] & \cdots & x[M^2{-}M{+}1] \\
+    % \vdots & \vdots & \ddots & \vdots \\
+    % x[M{-}1] & x[2M{-}1] &\cdots & x[M^2{-}1] \\
+    % \end{array}\right]
+    & \underrightarrow{\bm{X}_{(1)}} \\
+    & \begin{array}{|c|c|c|c|c|c|c|c}
+        \cline{1-1}
+        \cline{3-3}
+        \cline{5-5}
+        \cline{7-7}
+        % \cline{10-10}
+        \text{T} & \underrightarrow{\bm{X}_{(1)}^T} & \text{T FIR} & \underrightarrow{\bm{V}_{(1)}^T} & \text{T ZIC} & \underrightarrow{\bm{W}_{(1)}^T} & \text{T ICC} & \underrightarrow{\bm{Y}_{(1)}^T(\bm{X}_{(2)}^T)} \\
+        \cline{1-1}
+        \cline{3-3}
+        \cline{5-5}
+        \cline{7-7}
+        % \cline{10-10}
+    \end{array} \\
+        & \begin{array}{c|c|c|c|c|c|c|c|c}
+            \cline{2-2}
+            \cline{4-4}
+            \cline{6-6}
+            \cline{8-8}
+            \underrightarrow{} & \text{T FIR} & \underrightarrow{\bm{V}_{(2)}^T} & \text{T ZIC} & \underrightarrow{\bm{W}_{(2)}^T} & \text{T} & \underrightarrow{\bm{W}_{(2)}} & \text{T ICC}  & \underrightarrow{\bm{Y}_{(2)}} \\
+            \cline{2-2}
+            \cline{4-4}
+            \cline{6-6}
+            \cline{8-8}
+    \end{array}
+\end{aligned}
+\end{equation*}
+The cost for the above fourth order IIR is $2M{\log_2}M{+}16M{+}6 = 182$. Thus, we can see that, for a $L(\geq 4)$th order IIR filter, if only a single CPU and thread is used,
+the optimal combination should be $L/2{-}1$ cascaded second order core 2 followed by one core 3 at the end.
+
+\subsection{Base function optimization}
+
+\begin{table}[t]
+    \caption{The number of cycles for each SIMD instruction in VCL}  % title of Table
+    \centering % used for centering table
+    \begin{tabular}{c c c c c c} % centered columns (4 columns)
+    \hline\hline %inserts double horizontal lines
+     & FMA & shuffle & broadcast & load & store \\ [1ex] % inserts table
+    \hline % inserts single horizontal line
+    Number of cycles & 4 & 2-3 & 2-3 & 0-1 & 0-1 \\ [0.3ex]
+    Throughput & 0.5 & 1 & 0.5 & 0.25 & 0.25 \\ [1ex]
+    \hline
+    \end{tabular}
+    \label{table:number_of_cycles} % is used to refer this table in the text
+\end{table}
+
+We should note that the problem that we discussed so far has two assumptions: 1. The number of cycles for broadcast,
+load and store operations are ignored. This will be true if the three operations take less cycles than FMA and shuffle since
+those operations will be inserted between FMAs and executed within the duration of FMAs. 
+2. One FMA or shuffle instruction only takes one cycle. However, this is not always true.
+The cost of every SIMD instruction depends on what platform and micro-architecture are used to be implemented. For example, 
+in this paper, we implement the SIMD instructions on software via C++ programming by the mean of vector class library (VCL).
+The computer has the Intel Skylake CPU. The number of cycles that each instruction actually takes is listed in Table \ref{table:number_of_cycles},
+where the (reciprocal) throughput means the maximum number of instructions can be executed per clock cycle, e.g., the 0.5 throughput of FMA means
+at most 2 FMAs can be executed in one clock cycle.
+
+Because the FMA and shuffle instructions need to take more than one cycle in VCL, different computation strategy will affect the efficiency of base functions.
+We propose below three basic methods of improving the efficiency of base functions:
+
+1. Interleave dependency. When the function of transposed ZIC in \eqref{eq:ZIC_w_trans} is executed, the inherent dependency should be paid attention to.
+By unrolling the loop and exchanging the order of FMAs for SIMD vector, \eqref{eq:ZIC_w_trans} can be computed more efficiently as
+
+\begin{equation}
+    \label{eq:interleave_dependency}
+    \begin{aligned}
+        & \bm{W}^T[0] = \bm{V}^T[0]; \\
+        & \bm{W}^T[1] = \text{mul\_add}(\bm{V}^T[0],a_1,\bm{V}^T[1]); \\
+        & \bm{W}^T[2] = \text{mul\_add}(\bm{W}^T[0],a_2,\bm{V}^T[2]); \\
+        & \bm{W}^T[3] = \text{mul\_add}(\bm{W}^T[1],a_2,\bm{V}^T[3]); \\
+        & \bm{W}^T[2] = \text{mul\_add}(\bm{W}^T[1],a_1,\bm{W}^T[2]); \\
+        & \bm{W}^T[3] = \text{mul\_add}(\bm{W}^T[2],a_1,\bm{W}^T[3]); \\
+        & \bm{W}^T[4] = \text{mul\_add}(\bm{W}^T[2],a_2,\bm{V}^T[4]); \\
+        & \quad\quad\quad\quad\quad\quad\quad\quad\quad \vdots
+    \end{aligned}
+\end{equation}
+where mul\_add($\cdot$) is the FMA instruction for SIMD operation in VCL.
+We can see that by exchanging the order of FMAs, each FMA is interleaved by two cycles, i.e.,
+the efficiency is increased roughly by two times compared with computing in order. 
+
+2. Parallelize large sum-up. The expensive part of computing transposed ICC is the big matrix multiplication in \eqref{eq:ICC_init_w_trans}.
+The computation is essentially summing up all the FMAs without dependency for each of two blocks. Thus, we can compute and sum up the FMAs in parallel, and then
+add the sub sum-up together. For example, when calculate \eqref{eq:ICC_init_w_trans} in parallel two,
+
+\begin{equation}
+    \label{eq:parallelized_sum_up}
+    \begin{aligned}
+        & \bm{yt} = \text{mul\_add}(\bm{T}[0],\bm{W}^T[M{-}2][0],\bm{yt}); \\
+        & \bm{ys} = \text{mul\_add}(\bm{T}[M],\bm{W}^T[M{-}1][0],\bm{ys}); \\
+        & \bm{yt} = \text{mul\_add}(\bm{T}[1],\bm{W}^T[M{-}2][1],\bm{yt}); \\
+        & \bm{ys} = \text{mul\_add}(\bm{T}[M{+}1],\bm{W}^T[M{-}1][1],\bm{ys}); \\
+        & \bm{yl} = \text{mul\_add}(\bm{T}[2M],\bm{W}^T[M{-}2][0],\bm{yl}); \\
+        & \bm{yk} = \text{mul\_add}(\bm{T}[3M],\bm{W}^T[M{-}1][0],\bm{yk}); \\
+        & \bm{yl} = \text{mul\_add}(\bm{T}[2M{+}1],\bm{W}^T[M{-}2][1],\bm{yl}); \\
+        & \bm{yk} = \text{mul\_add}(\bm{T}[3M{+}1],\bm{W}^T[M{-}1][1],\bm{yk}); \\
+        & \quad\quad\quad\quad\quad\quad\quad\quad\quad \vdots
+    \end{aligned}
+\end{equation}
+where $\bm{yt}$, $\bm{ys}$ are two SIMD temporary registers for calculating $\bm{Y}^T[M{-}2]$, and
+$\bm{yl}$, $\bm{yk}$ are registers for calculating $\bm{Y}^T[M{-}1]$. It can be seen that by computing the 
+large sum-up in parallel, we increase the number of FMAs computed simultaneously to approach the throughput of FMA.
+Note, we can also exchange the order of computing $\bm{yt}$, $\bm{ys}$ and $\bm{yl}$, $\bm{yk}$ 
+to improve the efficiency as interleaving.
+
+3. Mix FIR and ZIC. When construct a high order IIR filter, as we discussed, core 2 based on transposed data will be used 
+for multiple times. Compared with transposed ICC, transposed FIR and ZIC functions are much cheaper, thus may induce a large overhead.
+On the other hand, to mix executing FIR and ZIC, the inherent dependency of ZIC can be further interleaved by the operations in FIR,
+
+\begin{equation}
+    \label{eq:mix_fir_zic}
+    \begin{aligned}
+        & \bm{xp2} = \text{blend}(\bm{X}^T[M{-}2],x_{-2}); \\
+        & \bm{xp1} = \text{blend}(\bm{X}^T[M{-}1],x_{-1}); \\
+        & \bm{V}^T[0] = \text{mul\_add}(\bm{xp2},b_2,\bm{X}^T[0]); \\
+        & \bm{V}^T[0] = \text{mul\_add}(\bm{xp1},b_1,\bm{V}^T[0]); \\
+        & \bm{W}^T[0] = \bm{V}^T[0]; \\
+        & \bm{V}^T[1] = \text{mul\_add}(\bm{xp1},b_2,\bm{X}^T[1]); \\
+        & \bm{V}^T[1] = \text{mul\_add}(\bm{X}^T[0],b_1,\bm{V}^T[1]); \\
+        & \bm{W}^T[1] = \text{mul\_add}(\bm{V}^T[0],a_1,\bm{V}^T[1]); \\
+        & \quad\quad\quad\quad\quad\quad\quad\quad\quad \vdots
+    \end{aligned}
+\end{equation}
+where blend is the shuffle instruction in VCL. 
