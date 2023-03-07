@@ -1,0 +1,26 @@
+\section{Introduction}
+\label{sec:introduction}
+
+The inherent dependency of recursive filter limits its computation speed.
+To overcome the difficulty, the efficient way is to solve the recursive equation by seperating into
+particular and homogeneous solutions.
+One previous method based on SIMD operation includes block filtering \cite{Sung_86}, 
+which basically computes consecutive samples in a SIMD vector by matrix multiplication. 
+The number of arithmetric operation per sample is regardless of the block length. Thus, block filtering achieves
+intra-block parallelism. 
+
+One more efficient method exploits inter-block parallelism is to solve the particular part of recursive equation via multiple blocks \cite{Jaewoo_09}.
+the consecutive samples are partitioned into multiple blocks in the distance of block length, thus, the multi-block filtering method
+processes a squared matrix of samples in transposed grid. Compared with block filtering, the number of arithmetic operation per sample for multi-block filtering is decreased 
+by the reciprocal of the block length.
+
+However, there is a gap that most of literatures ignore the rounding error issue happens at higher order recursive filter when implementing the algorithms in direct form.
+Since the poles depend on all coefficients of recursive equation, the finite precision of rounded coefficients may cause some poles near the unit circle
+moving outside the unit circle. The solution is to breaking up the higher order filter into cascaded sections, thus the poles are only affected by few coefficients to mitigate
+the rounding error issue.
+
+To address both accuracy and efficiency, this paper implements the recursive filter by cascading second order sections with a novel multi-block filtering method applied.
+Specifically, compared with \cite{Jaewoo_09}, we extend the multi-block filtering method on solving both particular and homogeneous parts. With the idea of recursive doubling \cite{Kogge_73},
+the proposed algorithm solves for the homogeneous part very efficiently. More importantly, the algorithm behind this paper is very suitable for cascaded form of recursive filter.
+
+

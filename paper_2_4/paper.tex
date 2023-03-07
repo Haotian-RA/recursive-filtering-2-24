@@ -5,7 +5,7 @@
 \usepackage{amsmath,amssymb,amsfonts}
 \usepackage[cmintegrals]{newtxmath}
 \usepackage{cite}
-\usepackage{algorithmic}
+\usepackage{algorithm}
 \usepackage{graphicx}
 \usepackage{textcomp}
 \usepackage{xcolor}
@@ -15,6 +15,7 @@
 \usepackage{mathtools}
 \usepackage{url}
 \usepackage{arydshln}
+\usepackage{algpseudocode}
 
 \makeatletter
 \newcommand*\dashline{\rotatebox[origin=c]{90}{$\dabar@\dabar@\dabar@$}}
@@ -28,7 +29,7 @@
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
     T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
 
-% \graphicspath{{../main_matlab_figures/}{../matlab/}}
+\graphicspath{{../figures/}{../matlab/}}
 
 \DeclareUnicodeCharacter{0303}{}
 
@@ -38,7 +39,7 @@
 \begin{document}
 
 %\title{Low Complexity Methods for Joint Detection and Synchronization of TDMA Bursts}
-\title{Recursive Filtering}
+\title{\huge An Accurate and Efficient Implementation of Recursive Filtering based on SIMD and Cascaded Form }
 \author{\IEEEauthorblockN{Haotian Zhai and Bernd-Peter Paris}
 \IEEEauthorblockA{\textit{Department of Electrical and Computer Engineering} \\
 \textit{George Mason University}\\
@@ -74,7 +75,7 @@ Fairfax, VA 22030 \\
 % detection, GLRT, SDR
 \end{IEEEkeywords}
 
-% \input{introduction}
+\input{introduction}
 
 \input{algorithm}
 
