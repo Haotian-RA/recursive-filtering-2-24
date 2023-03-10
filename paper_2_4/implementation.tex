@@ -20,12 +20,12 @@ The number of store operation for each function is identical as $1/M$.
     \setlength{\tabcolsep}{0.9pt}
     \begin{tabular}{c|c|c|c|c} % centered columns (4 columns)
     \hline\hline %inserts double horizontal lines
-    function name & FMA & shuffle & broadcast & load \\ [1ex] % inserts table
+    function name & FMA & shuffle & broadcast & load \\ [0.3ex] % inserts table
     \hline % inserts single horizontal line
     NT ZIC & $1{+}\frac{2}{M}$ & 0 & $1{+}\frac{2}{M}$ & $1{+}\frac{5}{M}$ \\ [0.3ex]
     NT ICC & $\frac{2}{M}$ & 0 & $\frac{2}{M}$ & $\frac{5}{M}$ \\ [0.3ex]
     T ZIC & $\frac{4}{M}{-}\frac{3}{M^2}$ & $\frac{2}{M^2}$ & $\frac{4}{M^2}$ & $\frac{1}{M}{+}\frac{6}{M^2}$ \\ [0.3ex]
-    T ICC & $\frac{4\log_2M}{M^2}{+}\frac{2}{M}$ & $\frac{2\log_2M}{M^2}{+}\frac{2}{M^2}$ & $\frac{2}{M}{-}\frac{2}{M^2}$ & $\frac{1}{M}{+}\frac{4\log_2M{+}8}{M^2}$ \\ [0.3ex]
+    T ICC & $\frac{4\log_2M}{M^2}{+}\frac{2}{M}$ & $\frac{2\log_2M{+}2}{M^2}$ & $\frac{2}{M}{-}\frac{2}{M^2}$ & $\frac{1}{M}{+}\frac{4\log_2M{+}8}{M^2}$ \\ [0.3ex]
     Transpose & 0 & $\frac{\log_2M}{M}$ & 0 & $\frac{1}{M}$ \\ [0.3ex]
     Option 1 & $1{+}\frac{4}{M}$ & 0 & $1{+}\frac{4}{M}$ & $1{+}\frac{9}{M}$ \\ [0.3ex]
     Option 2 & $\frac{6}{M}{-}\frac{3}{M^2}$ & $\frac{2\log_2M}{M}{+}\frac{2}{M^2}$ & $\frac{2}{M}{+}\frac{4}{M^2}$ & $\frac{1}{M}{+}\frac{10}{M^2}$ \\ [0.3ex]
@@ -40,9 +40,9 @@ i.e., the number of instructions per cycle is inversely propotional to $M$ or $M
 NT ZIC (or NT ICC) denotes the function of block filtering method for solving the particular (or homogeneous) part of recursive equation,
 where NT stands for non-transposed grid of samples (the samples are processed consecutively in vector) to distinguish from transposed grid of samples
 in multi-block filtering. 
-Assume we implement the algorithms on software. Normally, the load and broadcast operation are cheap, and moreover,
+Assume we implement the algorithms on software. Note normally, the load and broadcast operation are cheap, and moreover,
 are known to the compiler at the compile time. The smart compiler will interleave the two operations by FMA and shuffles to save the cycles. 
-On the other hand, if we re-compare each function by the number of FMA and shuffles, we may get similar results as before since the complexity degree for basic functions don't change.
+On the other hand, if we re-compare each function by the total number of FMAs and shuffles, we may get similar results as before since the complexity degree for basic functions don't change.
 
 Let's go beyond the function level to see the three options of compusing the second order filter. Option 1 is more useful when the processor is limited to deal with the SIMD instruction.
 For modern CPUs, option 2 is the cheapest at the number of FMAs and shuffles. The feature of option 3 is that the two matrix transposes
