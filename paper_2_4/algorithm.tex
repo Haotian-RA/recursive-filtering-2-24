@@ -22,22 +22,24 @@ The vector form of \eqref{eq:recursive_filter} can be easily proved and given by
     % y[n] = x[n] + b_1x[n-1] + b_2x[n-2] + a_1y[n-1] + a_2y[n-2]
     \bm{y}[n] = \bm{H}\bm{x}[n] + \bm{B}\bm{x_p}[n] + \bm{A}\bm{y_p}[n] 
 \end{equation}
-where $\bm{H}$, $\bm{B}$, $\bm{A}$ are all constant matrices of size $M \times M$, $M \times 2$ and $M \times 2$,
-and $M$ is the length of block (SIMD vector). $\bm{x_p}$ and $\bm{y_p}$ are vectors of initial conditions, 
-which always include the last two samples in the past input or output blocks.
-The matrices $\bm{B}$ and $\bm{A}$ are composed by the impulse responses for particular and homogeneous parts of recursive equation, where
+where $\bm{x}[n] = \left[x_{nM}~x_{nM+1} \cdots x_{(n+1)M-1}\right]^T$ denotes one block of input samples starting at $x_{nM}$ in size $M$,
+as well as $\bm{y}[n]$. $\bm{x_p}[n]=\left[x_{nM-2}~x_{nM-1}\right]^T$, $\bm{y_p}[n]=\left[y_{nM-2}~y_{nM-1}\right]^T$ are two vectors 
+containing the initial conditions of the current block of samples. 
+$\bm{H}$, $\bm{B}$, $\bm{A}$ are three constant matrices of size $M \times M$,
+$M \times 2$ and $M \times 2$, where
+the matrices $\bm{B}$ and $\bm{A}$ are composed by the impulse responses for particular and homogeneous parts of recursive equation, individually, i.e.,
 
 \begin{equation*}
     \begin{aligned}
           \bm{B} {=} \left[\arraycolsep=1.0pt\def\arraystretch{1.0}
-            \begin{array}{cc}
+            \begin{array}{c:c}
         b_2 & b_1 \\ 
         a_1b_2 & a_1b_1{+}b_2 \\
         a_1^2b_2{+}a_2b_2 & a_1^2b_1{+}a_1b_2{+}a_2b_1 \\
         \vdots & \vdots \\
         \end{array}\right], 
         \bm{A} {=} \left[\arraycolsep=1.0pt\def\arraystretch{1.0}
-            \begin{array}{cc} 
+            \begin{array}{c:c} 
             a_2 & a_1 \\ 
             a_1a_2 & a_1^2{+}a_2 \\
             a_1^2a_2{+}a_2^2 & a_1^3{+}2a_1a_2 \\
@@ -45,11 +47,12 @@ The matrices $\bm{B}$ and $\bm{A}$ are composed by the impulse responses for par
             \end{array}\right]
         \end{aligned}
 \end{equation*}
-and $\bm{H}$ is a lower triangular Toeplitz matrix, constructed by the addition of the impulse responses in $\bm{B}$ and $\bm{A}$, where
+and $\bm{H}$ is a lower triangular Toeplitz matrix constructed by the addition of the second impulse responses in $\bm{B}$ and $\bm{A}$, 
+i.e.,
 
 \begin{equation*}
         \bm{H} = \left[\arraycolsep=3.0pt\def\arraystretch{1.2}
-            \begin{array}{ccccc}
+            \begin{array}{c:c:c:c:c}
             1 & 0 & \cdots & \cdots & 0 \\ 
             b_1{+}a_1 & 1 & \ddots & 0  & \vdots \\
             a_1b_1{+}b_2{+}a_1^2{+}a_2 & b_1{+}a_1 & 1 & \ddots & \vdots \\
@@ -58,73 +61,102 @@ and $\bm{H}$ is a lower triangular Toeplitz matrix, constructed by the addition 
             \end{array}\right].  \\
 \end{equation*}
 
-The computation of \eqref{eq:block_filtering} is essentially the matrix multiplication.
-If we seperate by first computing the particular solution, 
-i.e., $\bm{H}\bm{x}+\bm{B}\bm{x_p}$ and then the homogeneous solution,
-the number of arithmetic operation (ALU) for the former step is $M{+}2$ and for the latter step is 2.
-Thus, the number of ALU per sample is $1{+}4/M$, and approaches 1 when $M$ goes to infinity, which is independent
-of the block length.
+If we want to compute \eqref{eq:block_filtering} by SIMD operation, to realize the parallelism as much as possible, 
+the block size $M$ is normally determined to be equal to the largest size of SIMD vector that can be processed.
+We insert the dashed line inside the matrices to seperate those by SIMD vectors, where the memory of data in the same vector are consecutive.
+This procedure makes it easier to see how the algorithm is performed by SIMD.
+For example, to compute $\bm{B}\bm{x_p}$, we perform two multiplication and additions by the first column of $\bm{B}$ and the first value of $\bm{x_p}$,
+then the second column of $\bm{B}$ and the second value of $\bm{x_p}$.
 
+Thus, the computation of \eqref{eq:block_filtering} requires $M+4$ fused multiplication and additions (FMAs).
+To be more specific, the number of FMAs are seperated by $M{+}2$ for getting the particular solution, i.e.,
+$\bm{H}\bm{x}+\bm{B}\bm{x_p}$, and the rest 2 FMAs are for the homogeneous solution, i.e., $\bm{Ay_p}$.
+Furthermore, the number of FMAs for each sample of computing \eqref{eq:block_filtering} is $1{+}4/M$, which  
+approaches 1 when $M$ goes to infinity. The computing complexity is $O(1)$ that is independent of the block length. 
 
 \subsection{The Proposed Multi-block Filtering Method}
 
 Compared with the block filtering method, the basic idea of multi-block filtering is to partition the consecutive samples into multiple blocks to exploit more
-parallelism between blocks. 
-In particular, consider a $M \times M$ squared matrix of samples, i.e., a combination of $M$ consecutive blocks with each block of length $M$.
-The straightforward way to seperate the consecutive samples into different blocks is by matrix transpose, 
-e.g., the matrix version of inputs in \eqref{eq:recursive_filter} after matrix transpose is 
+parallelism between blocks.
+In particular, consider a $M \times M$ squared matrix of samples, i.e., a combination of $M$ consecutive blocks with $M$ consecutive samples in each block.
+The straightforward way to seperate the $M^2$ consecutive samples into different blocks is by matrix transpose, 
+e.g., the matrix version of input samples after matrix transpose is 
 
 \begin{equation*}
     \begin{aligned}
-    \bm{X}^T {=} \left[
-        \begin{array}{c|c|c|c}
-        x_0 & x_1 & \cdots & x_{M-1} \\ 
-        x_M & x_{M+1} & \cdots & x_{2M-1} \\
+    \bm{X}^T_{(n)} = \left[
+        % \arraycolsep=3.0pt\def\arraystretch{1.2}
+        \begin{array}{c:c:c:c}
+        x_{nM^2} & x_{nM^2+1} & \cdots & x_{nM^2+M-1} \\ 
+        x_{nM^2+M} & x_{nM^2+M+1} & \cdots & x_{nM^2+2M-1} \\
         \vdots & \vdots & \ddots & \vdots \\
-        x_{M^2-M} & x_{M^2-M+1} &\cdots & x_{M^2-1} \\
+        x_{(n+1)M^2-M} & x_{(n+1)M^2-M+1} &\cdots & x_{(n+1)M^2-1} \\
         \end{array}\right]
     \end{aligned}
 \end{equation*}
-where each block is aligned with column and seperated by line.
-We use $\bm{X}[n]$ to denote the $n$th block and $\bm{X}[n][m]$ means the $m$th sample at $n$th block
+where the dashed lines are inserted for seperating the $M$ blocks in $\bm{X}^T$ and each block corresponds to one SIMD vector.
+Note, for the rest of paper, we omit the global index $n$ in the matrix version of samples by only considering local indexing, i.e.,
+we only look at $\bm{X}^T\triangleq\bm{X}^T_{(0)}$. By doing this, the notations become easier to recognize and we can more focus on understanding
+the algorithms performed for one matrix of samples.
+Further,
+We use $\bm{X}[n][m]$ to denote the $m$th sample at the $n$th block
 of input matrix $\bm{X}$. Next, we are going to explain how exactly the multi-block filtering method works in this paper 
-also by seperating into solving the particular and homogeneous parts.
+by seperating into solving the particular and homogeneous parts.
 
 \subsubsection{Zero initial condition (ZIC)}
 
-The efficient approach to solving the recursive equation in matrix form is by seperately computing the
-particular and homogeneous parts. 
-The process of solving particular part in this paper is named 
-ZIC because we assume zeroing the initial conditions of homogeneous part. 
-The algorithm of ZIC computing the particular solution with transposed matrix of samples is given by
+The efficient way of solving the recursive equation in matrix form is to seperately compute
+the particular and homogeneous parts. The process of solving the particular part in this paper is called
+ZIC since we assume zeroing the initial conditions of the homogeneous part. 
+Thus, the function of ZIC by computing a transposed matrix of samples is given by
 
 \begin{equation}
     \label{eq:ZIC}
     \begin{aligned}
-        \bm{W}^T &= \bm{X}^T + b_1\bm{X_{-1}}^T + b_2\bm{X_{-2}}^T 
-             + a_2\left[\arraycolsep=2.5pt\def\arraystretch{1.2}
-                \begin{array}{c|c|c|c|c}
+        &\bm{W}^T = \bm{X}^T 
+        + b_2{\left[\arraycolsep=0.9pt\def\arraystretch{0.9}
+        \begin{array}{c:c:c:c}
+        x_{-2} & x_{-1} & \cdots & x_{M-3} \\ 
+        x_{M-2} & x_{M-1} & \cdots & x_{2M-3} \\
+        \vdots & \vdots & \ddots & \vdots \\
+        x_{M^2-M-2} & x_{M^2-M-1} & \cdots & x_{M^2-3} \\
+        \end{array}\right]} + \\ 
+        & b_1\left[\arraycolsep=0.9pt\def\arraystretch{0.9}
+        \begin{array}{c:c:c:c}
+        x_{-1} & x_0 & \cdots & x_{M-2} \\ 
+        x_{M-1} & x_M & \cdots & x_{2M-2} \\
+        \vdots & \vdots & \ddots & \vdots \\
+        x_{M^2-M-1} & x_{M^2-M} & \cdots & x_{M^2-2} \\
+        \end{array}\right]
+        {+} a_2\left[\arraycolsep=0.9pt\def\arraystretch{0.9}
+                \begin{array}{c:c:c:c:c}
                 0 & 0 & w_0 & \cdots & w_{M-3} \\ 
                 0 & 0 & w_M & \cdots & w_{2M-3} \\
                 \vdots & \vdots & \vdots & \ddots & \vdots \\
                 0 & 0 & w_{M^2-M} & \cdots & w_{M^2-3} \\
-                \end{array}\right]  \\
-            &+ a_1\left[\arraycolsep=2.5pt\def\arraystretch{1.2}
-                \begin{array}{c|c|c|c|c}
-                0 & w_0 & w_1 & \cdots & w_{M-2} \\ 
-                0 & w_M & w_{M+1} & \cdots & w_{2M-2} \\
-                \vdots & \vdots & \vdots & \ddots & \vdots \\
-                0 & w_{M^2-M} & w_{M^2-M+1} & \cdots & w_{M^2-2} \\
-                \end{array}\right]
+                \end{array}\right] \\
+        &+ a_1\left[\arraycolsep=0.9pt\def\arraystretch{0.9}
+            \begin{array}{c:c:c:c:c}
+            0 & w_0 & w_1 & \cdots & w_{M-2} \\ 
+            0 & w_M & w_{M+1} & \cdots & w_{2M-2} \\
+            \vdots & \vdots & \vdots & \ddots & \vdots \\
+            0 & w_{M^2-M} & w_{M^2-M+1} & \cdots & w_{M^2-2} \\
+            \end{array}\right]
     \end{aligned}
 \end{equation}
-where $\bm{X_{-1}}^T$ and $\bm{X_{-2}}^T$ represent a shifted version of matrix $\bm{X}^T$, in which the positions of all samples
-in $\bm{X}^T$ are lagged by 1 or 2 with $x_{-1}$ and $x_{-2}$ inserted ahead of samples.
+% where $\bm{X_{-1}}^T$ and $\bm{X_{-2}}^T$ represent a shifted version of matrix $\bm{X}^T$, in which the positions of all samples
+% in $\bm{X}^T$ are lagged by 1 or 2 with $x_{-1}$ and $x_{-2}$ inserted ahead of samples.
 
-We see that to execute \eqref{eq:ZIC}, we just need to prepare for $\bm{X_{-1}}$ and $\bm{X_{-2}}$, which takes $2M$ shuffles for all blocks.
-After that, every computation can be forwarded. It should be noted that by doing \eqref{eq:ZIC}, 
+We can see that to execute \eqref{eq:ZIC}, we need to prepare for two blocks that contains the initial conditions of the particular part for the first block 
+of the input matrix, i.e., two blocks start at $x_{-2}$ and $x_{-1}$, respectively. The above procedure can be done by 2 shuffles with the last two blocks of 
+the input matrix.
+After that, the rest of computations can be forwarded. The matrices
+multiplied by $a_1$ and $a_2$ containing some blocks of $\bm{W}^T$
+brings the dependency problem.
+It should be noted that by doing \eqref{eq:ZIC},
 the inherent dependency of recursive equation is propagated to samples at every position in block, thus, realizes inter-block parallelism. 
-The number of ALU for each sample is reduced to $4/M{-}3/M^2$, which approaches 0 when $M$ becomes arbitrary large.
+The number of FMAs for each sample is reduced to $4/M{-}3/M^2$,
+which approaches 0 when $M$ becomes infinity.
 
 \subsubsection{Initial condition correction (ICC)}
 
@@ -135,7 +167,7 @@ The algorithm that computes the homogeneous part is given by
     \label{eq:ICC}
     \begin{aligned}
         \bm{Y}^T &= \bm{W}^T + \left[\arraycolsep=1.6pt\def\arraystretch{1.0}
-                \begin{array}{c|c}
+                \begin{array}{c:c}
                 y_{-1} & y_{-2} \\ 
                 y_{M-1} & y_{M-2} \\
                 \vdots & \vdots \\
@@ -149,29 +181,42 @@ The algorithm that computes the homogeneous part is given by
         & = \bm{W}^T + \bm{Y_p}^T  \bm{A}^T
     \end{aligned}
 \end{equation}
-where $\bm{Y_p}^T$ denotes a $M \times 2$ matrix including the last two blocks of $\bm{Y}^T$ 
-% and each block lagged by one sample
-% with $y_{-1}$ and $y_{-2}$ inserted ahead, e.g., $\bm{Y_p}^T[0] = \left[y_{-1} ~ y_{M-1} \cdots y_{M^2-M-1} \right]^T$. 
-with each shifted by one sample $y_{-1}$ and $y_{-2}$.
-The diffculty of executing \eqref{eq:ICC} is to get $\bm{Y_p}^T$ at the first step, meaning we need to compute later outputs before earlier outputs, e.g.,
+where $\bm{Y_p}^T$ denotes a $M \times 2$ matrix including the two blocks of initial conditions for the particular part.
+The diffculty of executing \eqref{eq:ICC} is to get $\bm{Y_p}^T$ at the first step,
+meaning we need to compute later outputs before earlier outputs, e.g.,
 computing $y_{M-1}$ before $y_0$, which breaks through the inherent dependency of recursive equation.
-Fortunately, it can be done since $\bm{Y_p}^T$ is also the initial matrix for the last two blocks in $\bm{Y}^T$ where they share the same 
-samples, and the transformation from the former to latter only depends on a constant matrix compused by some new impulse responses.
-Specifically, one approach to calculating the last two blocks of $\bm{Y}^T$ is given by
+Fortunately, it can be done since $\bm{Y_p}^T$ is also the initial matrix 
+for the last two blocks in $\bm{Y}^T$ where they share the same samples.
+The transformation from the former to latter only depends on a constant matrix compused by 
+an addition with two new impulse responses. To be more specific,
+one approach to calculating $\bm{Y_p}^T$, or alternatively, 
+the last two blocks of $\bm{Y}^T$ based on the above discussion is given by
 
 \begin{equation*}
     \begin{aligned}
-        \bm{y_e} = \bm{T} \bm{w_e} + \bm{D}\bm{y_p}
+        \left[\arraycolsep=1.0pt\def\arraystretch{1.0}
+                \begin{array}{c}
+                \bm{Y}^T[M{-}2] \\  \hdashline
+                \bm{Y}^T[M{-}1] \\ 
+                \end{array}\right] = \bm{T} \left[\arraycolsep=1.0pt\def\arraystretch{1.0}
+                \begin{array}{c}
+                \bm{W}^T[M{-}2] \\  \hdashline
+                \bm{W}^T[M{-}1] \\ 
+                \end{array}\right] + \bm{D} \left[\arraycolsep=1.0pt\def\arraystretch{1.0}
+                \begin{array}{c}
+                y_{-2} \\  \hdashline
+                y_{-1} \\ 
+                \end{array}\right] \\
+        % \bm{y_e} = \bm{T} \bm{w_e} + \bm{D}\bm{y_p}
     \end{aligned}
 \end{equation*}
-where $\bm{y_e}$, $\bm{w_e}$ are two vectors of length $2M$ including the last two blocks of $\bm{Y}^T$ and $\bm{W}^T$.
-$\bm{y_p}$ denotes a vector of length 2 with $y_{-2}$ and $y_{-1}$.
-$T$ is a $2M \times 2M$ constant matrix, and $\bm{D}$ is another $2M \times 2$ constant matrix.
-The problem of this approach is that $\bm{T}$ is oversized, meaning we cannot compute the matrix multiplication 
-with vectors of length $2M$, instead we have to compute $4M$ ALUs with vectors of length $M$.
-Thus, we are not going to explain more details of solving the above equation, instead we propose a more efficient algorithm
-of computing $\bm{Y_p}^T$ that is based on the idea of recursive doubling \cite{Kogge_73}.  
-
+where $\bm{T}$, $\bm{D}$ are two constant matrices of size $2M \times 2M$ and $2M \times 2$.
+The problem of this approach is that $\bm{T}$ is oversized.
+Since the largest size of SIMD vector that can be processed is restricted by $M$,
+The matrix multiplication of $\bm{T}$ and the long vector involving $\bm{W}^T$ has to be computed by
+$4M$ FMAs, which is not efficient. Thus, we are not going to explain more details of solving the above equation,
+instead we propose one more efficient method to computing 
+$\bm{Y_p}^T$, which is based on the idea of recursive doubling \cite{Kogge_73}.
 
 \begin{figure}[t]
     \centerline{\includegraphics[width=3.15in]{recursive_doubling.png}}
