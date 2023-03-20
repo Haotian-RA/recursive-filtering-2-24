@@ -1,6 +1,35 @@
 \section{Experimental Results}
 \label{sec:experiment}
 
+\subsection{Rounding Error Issue}
+
+\begin{figure}[t]
+    \centerline{\includegraphics[width=3.3in]{poles_compare_zoom.png}}
+    \caption{Zero-pole plot of a 12th order recursive filter of direct and cascaded form with rounding error (zoomed)}
+    \label{fig:poles_compare_zoom}
+\end{figure}
+
+We start discussing the importance of implementing the high order recursive filter in cascaded form, i.e.,
+to avoid rounding error issue happening in computing. 
+
+Consider designing a 12th order lowpass recursive filter by 5 pairs of complex-conjugate poles and two real poles, where the poles are
+$\frac{6}{7} \pm j\frac{\sqrt{11}}{7}$, $\frac{10}{11} \pm j\frac{\sqrt{17}}{11}$, $\frac{8}{9} \pm j\frac{\sqrt{13}}{9}$, $\frac{0.5}{13} \pm j\frac{\sqrt{0.8}}{13}$,
+$0.95$, $0.85$ and $\frac{6}{7} \pm j\frac{2}{7}$. Four pairs of complex-conjugate and two real poles near the
+right side of unit circle are plotted by blue marker
+in the zoomed zero-pole plot as Figure \ref{fig:poles_compare_zoom}.
+Then, to get the coefficients of the recursive equation, we basically do the convolution with the number of poles, which depends on
+the number of subsystems. 
+To build the direct form of recursive equation,
+since the coefficients are related to all the poles,
+the finite precision of rounded coefficients
+may cause some poles near the unit circle moving outside the unit circle.
+
+For example, in Figure \ref{fig:poles_compare_zoom}, the data type of the poles and filter coefficients are used as 32-bit floating number.
+We can see that some poles after building the recursive filter in direct form 
+moves outside the unit circle, which makes the filtering system unstable.
+The solution is to seperating the system into multiple second order subsystems,
+where the poles perfectly match the desired poles (thus stable).
+
 \subsection{Testing Results of Recursive Filtering Algorithms}
 
 We used two Intel CPU based micro-architectures, one for Intel Haswell CPU with the clock frequency 3.3 GHz
@@ -134,7 +163,7 @@ a $L$th order recursive filter is that one matrix transpose at the beginning, $L
 
 \begin{figure}[t]
     \centerline{\includegraphics[width=3.3in]{real_time_test.png}}
-    \caption{The real time for single second order option of filtering 1M samples under different order of filters and micro-architectures}
+    \caption{The real time for single second order option of filtering 1M samples under different order of filters and architectures}
     \label{fig:Real_time_test}
   \end{figure}
 
