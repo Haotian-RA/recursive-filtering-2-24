@@ -6,14 +6,19 @@ combinations of functions to build the second or higher order recursive filter f
 % Assume the input is a matrix of consecutive samples. Thus, for block filtering, the functions for solving particular and homogeneous
 % parts should perform $M$ times.
 
-The option 1 only accepts non-transposed matrix of samples, i.e., the block filtering method, which can be considered as the benchmark.
-The option 2 is that the particular part of recursive equation is solved by multi-block filtering, 
-and block filtering is working for the homogeneous part, which basically has the same idea as multi-block filtering method in \cite{Jaewoo_09}.
-The option 3 is our proposed multi-block filtering algorithm, where both functions for solving particular and homogeneous parts accept transposed matrix of samples.
-From implementation aspects, we are not limited to count the number of ALUs (FMAs, fused multiplication and additions), but the number of other SIMD instructions, 
-e.g., shuffle, broadcast and load operations for the basic functions and options, as shown in Table \ref{table:number_of_instructions}.
-The number of store operation for each function is identical as $1/M$. 
-
+The option 1 only accepts non-transposed grid of samples, i.e., the block filtering method, which can be considered as the benchmark.
+The option 2 is that the particular part of recursive equation is solved by our multi-block filtering, 
+and the vector filtering works for homogeneous part, which 
+has the same idea as the multi-block filtering method in \cite{Jaewoo_09}.
+The option 3 is our proposed multi-block filtering algorithm,
+where both functions accept the transposed matrix of samples.
+From implementation perspective,
+we are not limited to count the number of FMAs and shuffles,
+but also the number of other SIMD instructions, 
+e.g., broadcast and load operations for functions and options.
+The results are recorded in Table \ref{table:number_of_instructions}.
+The number of store for each function is identical as $1/M$, thus omitted. 
+ 
 \begin{table}[t]
     \caption{The number of SIMD instructions (per sample) for functions and options in theory       }  % title of Table
     \centering % used for centering table
@@ -36,21 +41,29 @@ The number of store operation for each function is identical as $1/M$.
 \end{table}
 
 From Table \ref{table:number_of_instructions}, we basically see that the algorithms are scaled linearly by the length of SIMD instructions,
-i.e., the number of instructions per cycle is inversely propotional to $M$ or $M^2$. 
-NT ZIC (or NT ICC) denotes the function of block filtering method for solving the particular (or homogeneous) part of recursive equation,
+i.e., the number of instructions per sample is inversely propotional to $M$ or $M^2$. 
+NT ZIC (or NT ICC) simply denotes the function of block filtering method for solving the particular (or homogeneous) part of recursive equation,
 where NT stands for non-transposed grid of samples (the samples are processed consecutively in vector) to distinguish from transposed grid of samples
 in multi-block filtering. 
-Assume we implement the algorithms on software. Note normally, the load and broadcast operation are cheap, and moreover,
-are known to the compiler at the compile time. The smart compiler will interleave the two operations by FMA and shuffles to save the cycles. 
-On the other hand, if we re-compare each function by the total number of FMAs and shuffles, we may get similar results as before since the complexity degree for basic functions don't change.
+Assume the algorithms are implemented on software.
+Note, the load and broadcast operations are normally cheap, moreover,
+are known to the compiler at the compile time. The smart compiler will interleave
+the two operations between FMAs and shuffles to reduce the clock cycles of the program.
+
+
+% On the other hand, if we re-compare each function by the total number of FMAs and shuffles, we may get similar results as before since the complexity degree for basic functions don't change.
 
 Let's go beyond the function level to see the three options of compusing the second order filter. Option 1 is more useful when the processor is limited to deal with the SIMD instruction.
 For modern CPUs, option 2 is the cheapest at the number of FMAs and shuffles. The feature of option 3 is that the two matrix transposes
 are located at the head and tail (one for input to ZIC, one for getting correct order of samples). When a high order recursive filter is constructed by cascading second order sections,
-the matrix transpose at the head of current section is cancelled out with the matrix transpose at the tail of previous section. 
-Thus, each intermediate cascaded second order filters of option 3 only needs to take ZIC and ICC.
-The complexity of intermediate sections of option 3 is $O(\log_2M/M^2)$, which is smaller than the complexity $O(\log_2M/M)$
-of option 2.
+the matrix transpose at the head of current section 
+can be cancelled out by the matrix transpose at the tail of previous section. 
+Thus, each intermediate cascaded second order filters of option 3 only needs to take the functions of ZIC and ICC.
+Then, the computing complexity of the intermediate sections is reduce to $O(6/M)$.
+
+
+% Then, the computing complexity of intermediate sections of option 3 is $O(\log_2M/M^2)$, which is smaller than the complexity $O(\log_2M/M)$
+% of option 2.
 
 Now we can see that our proposed algorithm is very suitable for building cascaded form of high order recursive filter.
 If the number of instructions is only the consideration, then for a $L$th order recursive filter,

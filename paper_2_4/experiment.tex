@@ -10,7 +10,7 @@ The algorithms are programmed by C++ and the SIMD instructions are realized
 by the mean of vector class library (VCL) \cite{Agner_04}.
 For compiler option, the latest version of Clang 15.0.0
 is used, and to allow efficient code optimization, 
-the flags -O3, -march=native are set with instruction set flags -mavx2 and -mfma. 
+the compiling flags -O3, -march=native, -fno-trapping-math, -fno-math-errno are set with the instruction set flags -mavx2 and -mfma. 
 Furthermore, all the algorithms are tested under a single core and single thread environment.
 In order to see that the performance of algorithms are scaled by the capacity of SIMD instructions, two 
 different lengths of SIMD vector, i.e., $M=4$ and $M=8$, which are allowed in AVX2, are used. 
@@ -42,16 +42,16 @@ different lengths of SIMD vector, i.e., $M=4$ and $M=8$, which are allowed in AV
 \end{table}
 
 Table \ref{table:number_of_instructions_in_assembly} shows the number of SIMD instructions per sample (IPS) for functions,
-second order options and two cascaded second order filters in assembly language. 
-The ratio stands for the ratio of reduced IPS,
+second order options and two cascaded second order options in assembly language. 
+The ratio stands for the ratio of the reduced IPS,
 which is computed by the difference 
-between IPS at $M=4$ and $M=8$ over the IPS at $M=4$. 
+between the IPS of $M{=}4$ and of $M{=}8$ over IPS of $M{=}4$. 
 The minus sign basically tells the performance
-of all the algorithms can be improved by increasing the length of SIMD vector. 
+of all algorithms can be improved by increasing the length of SIMD instruction.
 One important observation is that the (absolute) ratio of FMAs for three options are increasing,
-as well as the ratio of shuffle for option 2 and option 3. This shows our proposed algorithm for multi-block filtering 
-relying on the matrix version of samples has a better scale with the length of SIMD vector than vector-version based block filtering algorithm.
-We also get the similar conclusion by comparing the ratio of FMAs among functions, e.g., NT ZIC and T ZIC, NT ICC and T ICC.
+as well as the ratio of shuffle for option 2 and option 3. This explains our proposed algorithm by multi-block filtering 
+relying on matrix of samples has a better scale with the length of SIMD vector than vector based block filtering algorithm.
+We can also get the similar conclusion by comparing the ratio of FMAs among functions, e.g., NT ZIC and T ZIC, NT ICC and T ICC.
 
 In Table \ref{table:number_of_instructions_in_assembly}, we also record the number of SIMD instructions for different combinations of second order filter options.
 It can be seen that since option 2 has the smallest IPS of FMA, the cascaded option 2 also has the smallest IPS of FMA; 
@@ -64,7 +64,7 @@ it suffers a strong dependency problem of NT ICC part in option 2,
 which has explained in the previous section. 
 The last combination is option 3 and option 3. Compared with the other two, this combination has a middle number of FMA and shuffle (two matrix transpose can be also cancelled out),
 but it avoids the dependency problem by passing the matrix version of samples.
-Thus, it is desirable to measure the clock cycles for all the above combinations.
+Thus, it is desirable to measure the clock cycles of all the above combinations.
 
 
 \begin{table}[t]
@@ -92,46 +92,65 @@ Thus, it is desirable to measure the clock cycles for all the above combinations
 \end{table}
 
 
-\begin{table}[t]
-    \caption{The real time of filtering 1M samples by a cascaded 12th order recursive filter in two micro-architectures}  % title of Table
-    \centering % used for centering table
-    % \setlength{\tabcolsep}{1.6pt}
-    \begin{tabular}{c|c|c} % centered columns (4 columns)
-    \hline\hline %inserts double horizontal lines
-    function & \multicolumn{2}{c}{time (ns)} \\ [0.3ex]
-    \cline{2-3}
-    name & Haswell & Skylake \\ [0.3ex] % inserts table
-    \hline
-    6 cascaded Option 1 & 12M$\sim$14M & 8.3M$\sim$8.4M  \\ [0.3ex]
-    6 cascaded Option 2 & 7.5M$\sim$8.2M & 5.5M$\sim$5.6M  \\ [0.3ex]
-    6 cascaded Option 3 & 5.2M$\sim$5.5M & $\sim$3.9M  \\ [0.3ex]
-    \hline
-    \end{tabular}
-    \label{table:real_time_filtering_1M} % is used to refer this table in the text
-\end{table}
+% \begin{table}[t]
+%     \caption{The real time of filtering 1M samples by a cascaded 12th order recursive filter in two micro-architectures}  % title of Table
+%     \centering % used for centering table
+%     % \setlength{\tabcolsep}{1.6pt}
+%     \begin{tabular}{c|c|c} % centered columns (4 columns)
+%     \hline\hline %inserts double horizontal lines
+%     function & \multicolumn{2}{c}{time (ns)} \\ [0.3ex]
+%     \cline{2-3}
+%     name & Haswell & Skylake \\ [0.3ex] % inserts table
+%     \hline
+%     6 cascaded Option 1 & 12M$\sim$14M & 8.3M$\sim$8.4M  \\ [0.3ex]
+%     6 cascaded Option 2 & 7.5M$\sim$8.2M & 5.5M$\sim$5.6M  \\ [0.3ex]
+%     6 cascaded Option 3 & 5.2M$\sim$5.5M & $\sim$3.9M  \\ [0.3ex]
+%     \hline
+%     \end{tabular}
+%     \label{table:real_time_filtering_1M} % is used to refer this table in the text
+% \end{table}
 
 Table \ref{table:number_of_instructions_in_clock_cycles} illustrates the number of clock cycles per sample (CPS) for functions and options
-under two different CPU based architectures when $M{=}8$. We didn't count the number of clock cycles for each individual function in option 1 
+under two different CPU based architectures. 
+% when $M{=}8$. 
+We didn't count the number of clock cycles for each individual function in option 1 
 because NT ICC is a tiny function (only contains 2 FMAs),
-and the overhead may cause the testing cycles non accurate.
+and the overhead may cause the testing cycles not accurate.
 By comparing with the cycle per sample (CPS) of option 2 and option 3, we now get that
 our proposed algorithm based on multi-block filtering is more efficient in real implementation.
-The cascaded form of option 3 saves a few clock cycles compared with cascading option 2 in \cite{Jaewoo_09}
-for two reasons: one is that the former reduces the dependency issue
-by extending it from vector to matrix of samples; Second, 
+The cascaded form of option 3 reduces a few clock cycles compared with cascading option 2 in \cite{Jaewoo_09}
+for two reasons: one is that the former mitigates the dependency issue
+by extending it from the vector to matrix of samples; Second, 
 the necessary intermediate matrix transpose can be cancelled by the special arrangement of second order sections.  
 For the same reason, our proposed algorithm is good to build a higher order filter that 
-the increase of CPS by adding second order section will be lower and lower.
+the increase of CPS by adding second order section will be smaller.
 
-Even though from Table \ref{table:number_of_instructions}, we can get the IPS of FMA and shuffle for option 2 are both lower than
+Even though from Table \ref{table:number_of_instructions}, we can get the IPS of FMAs and shuffles for option 2 are both lower than
 option 3, CPS is a more important metric in real implementation since it directly relates to the application's latency.
-Thus, the conclusion for building a higher order filter in the last part of implementation section, gotten from only looking at IPS,
-should be corrected by all cascading option 3. Specifically, the most efficient way of building 
-a $L$th order recursive filter is one matrix transpose at the beginning, $L/2$ group of T ZIC and T ICC in the middle and another matrix transpose at the end.
+Thus, the conclusion for building a higher order filter in the previous implementation section, gotten from only looking at IPS,
+should be corrected by all cascading the option 3. In other words, 
+the most efficient way of building 
+a $L$th order recursive filter is that one matrix transpose at the beginning, $L/2$ group of T ZIC and T ICC in the middle and another matrix transpose at the end.
 
-Table \ref{table:real_time_filtering_1M} compares the real time cost for processing 1.024M samples of a 12th order recursive filter under two architectures when $M=8$. The results fit the CPS in Table \ref{table:number_of_instructions_in_clock_cycles} 
-as expected. Together with Table \ref{table:number_of_instructions_in_clock_cycles}, we see the efficiency of our proposed algorthm is also scaled by the updated version of CPU.
-Under a Skylake CPU based system, the throughput of our proposed algorithm, i.e., all cascaded option 3, goes to above 260 MS$\slash$s, which is very efficient.
+\begin{figure}[t]
+    \centerline{\includegraphics[width=3.3in]{real_time_test.png}}
+    \caption{The real time for single second order option of filtering 1M samples under different order of filters and micro-architectures}
+    \label{fig:Real_time_test}
+  \end{figure}
+
+Figure \ref{fig:Real_time_test} illustrates the real time for one second order option
+of filtering 1.024M samples under different order of filters and micro-architectures. For example,
+the red bar under option 1 shows the average time for each option 1 of filtering 1.024M samples under 
+the fourth order system cascaded by 2 option 1 and with the Skylake CPU. 
+By comparing with any three bars of options in the same color, we see the time spent for options has a decreasing order
+by option 1, option 2 and 3, which fits the result of CPS in Table \ref{table:number_of_instructions_in_clock_cycles}. 
+Together with Table \ref{table:number_of_instructions_in_clock_cycles}, 
+we can also see the efficiency of our algorthm is improved by newer version of CPU.
+Furthermore, an important observation is that if we compare the gaps between time spent for different order of systems under option 1
+and those under option 3, we also verify the previous conclusion that our proposed algorithm will be more efficient for building a higher order filter.
+By zooming in the bar with the shortest time in Figure \ref{fig:Real_time_test},
+it shows under a Skylake CPU based system, the throughput of a 12th order recursive filter built by
+cascading all second order options of our proposed algorithm can go up to above 260 MS$\slash$s, which is very efficient.
 
 
 

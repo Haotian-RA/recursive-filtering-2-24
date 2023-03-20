@@ -5,7 +5,7 @@ The inherent dependency of recursive filter limits its computation speed.
 To overcome the difficulty, the efficient way is to solve the recursive equation by seperating into
 particular and homogeneous solutions.
 One previous method based on SIMD operation includes block filtering \cite{Sung_86}, 
-which basically computes consecutive samples in a SIMD vector by matrix multiplication. 
+which basically computes consecutive samples in one SIMD vector by matrix multiplication. 
 The number of arithmetric operation per sample is regardless of the block length. Thus, block filtering achieves
 intra-block parallelism. 
 
@@ -14,7 +14,7 @@ the consecutive samples are partitioned into multiple blocks in the distance of 
 processes a squared matrix of samples in transposed grid. Compared with block filtering, the number of arithmetic operation per sample for multi-block filtering is decreased 
 by the reciprocal of the block length.
 
-However, there is a gap that most of literatures ignore the rounding error issue happens at higher order recursive filter when implementing the algorithms in direct form.
+However, there is a gap that most of the literatures ignore the rounding error issue happens at higher order recursive filter when implementing the algorithms in direct form.
 Since the poles depend on all coefficients of recursive equation, the finite precision of rounded coefficients may cause some poles near the unit circle
 moving outside the unit circle. The solution is to breaking up the higher order filter into cascaded sections, thus the poles are only affected by few coefficients to mitigate
 the rounding error issue.
