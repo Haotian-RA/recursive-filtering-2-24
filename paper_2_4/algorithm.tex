@@ -363,6 +363,7 @@ the algorithm of calculating $\bm{Y_p}^T$ by SIMD and recursive doubling method 
 % in Figure \ref{fig:Recursive_doubling_for_Ye} takes 4 ALUs and 2 shuffles. In addition to the initialization of RD 
 % and later forwarding, the entire number of ALUs that the proposed ICC algorithm takes is $4\log_2M+2M$, i.e., $4\log_2M/M^2+2/M$ per sample, which approaches 0 when $M$ goes to infinity.
 
+Note, the SIMD vector involving $\bm{C}$ in Algorithm \ref{recursive_doubling} can be pre-computed.
 The number of FMAs for getting $\bm{Y_p}^T$ by recursive doubling is $4\log_2M+4$. In addition with $2M-4$ FMAs for forwarding the first $M{-}2$ blocks of $\bm{Y}^T$,
 the total number of FMAs that the function of ICC takes is $4\log_2M+2M$, which converts to $4\log_2M/M^2{+}2/M$ FMAs per sample.
 On the other hand, the number of shuffle should also be taken care of in the process of getting $\bm{Y_p}^T$,
