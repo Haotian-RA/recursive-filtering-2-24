@@ -1,0 +1,18 @@
+\section{Parallel Processor Architecture}
+\label{sec:processor}
+
+In this paper, we introduce a generic parallel processor con\-cept,
+where the processor is assumed to support the following features:
+
+1. Superscalar. The processor has multiple execution units that provide instruction-level parallelism by allowing several
+operations to be executed simultaneously.
+
+2. Pipeline. Complementary to superscalar, pipelining divi\-des individual instructions into a sequence of processing steps,
+e.g., retrieving operands, execution, and storing the result. 
+Pipelining improves the throughput of execution units unless
+data dependencies prevent effective pipelining.
+
+3. Single core. Modern processors have multiple processing units operate simultaneously. Focus of this paper is optimizing single-core performance over short blocks of data.
+
+4. SIMD vector processing. A single-core superscalar proce\-ssor supports short vector operations that the processing units can apply the
+same instruction simultaneously to multiple data units.

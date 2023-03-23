@@ -228,7 +228,7 @@ has to be computed by $4M$ FMAs because
 the largest size of SIMD vector that can be processed is restricted by $M$.
 Due to the non-efficiency, we don't explain more details of this method,
 instead we propose a more efficient way to computing 
-$\bm{Y_p}^T$, which is based on the idea of recursive doubling \cite{Kogge_73}.
+$\bm{Y_p}^T$, which is based on the idea of recursive doubling.
 
 \begin{figure}[t]
     \centerline{\includegraphics[width=3.3in]{recursive_doubling.png}}
@@ -253,8 +253,8 @@ of size $2 \times 2$ composed by the last two elements of the two impulse respon
         \bm{A}[0][M{-}1] & \bm{A}[1][M{-}1] \\ 
         \end{array}\right].
 \end{equation*}
-The accuracy of the recursive doubling algorithm in Figure \ref{fig:Recursive_doubling} can be checked by
-$\bm{y_e}[7]$, which is given by
+The accuracy of recursive doubling of computing the last two blocks of $\bm{Y}^T$ in Figure \ref{fig:Recursive_doubling} can be checked by
+$\bm{y_e}[7]$,
 
 \begin{equation}
     \begin{aligned}
@@ -265,7 +265,7 @@ $\bm{y_e}[7]$, which is given by
     \end{aligned}
 \end{equation}
 
-Now we discuss how the recursive doubling algorithm can be performed by SIMD.
+Then, we discuss how the recursive doubling algorithm can be performed by SIMD.
 It can be seen the $M$ numbers of input $\bm{w_e}[n]$
 essentially interleave the samples of the last two blocks of $\bm{W}^T$.
 Thus, instead of doing the matrix multiplication, the computation can be partitioned into 4 FMAs by SIMD at each
