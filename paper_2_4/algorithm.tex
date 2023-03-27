@@ -1,7 +1,7 @@
 \section{The Proposed Algorithm}
 \label{sec:algorithm}
 
-The general second order recursive filter has the form, which is given by
+The second order recursive filter has the general form, which is given by
 
 \begin{equation}
     \label{eq:recursive_filter}
@@ -13,7 +13,7 @@ requires the past two output samples $y_{n-1}$ and $y_{n-2}$, is the inherent ob
 One approach is to computing the recursive equation in vector form by taking the advantage of SIMD. 
 
 
-\subsection{Block Filtering Method}
+\subsection{The Previous Block Filtering Algorithm}
 
 The vector form of \eqref{eq:recursive_filter} can be easily proved and given by
 
@@ -24,10 +24,10 @@ The vector form of \eqref{eq:recursive_filter} can be easily proved and given by
 \end{equation}
 where $\bm{x}[n] = \left[x_{nM}~x_{nM+1} \cdots x_{(n+1)M-1}\right]^T$ denotes one block of input samples starting at $x_{nM}$ in size $M$,
 as well as $\bm{y}[n]$. $\bm{x_p}[n]=\left[x_{nM-2}~x_{nM-1}\right]^T$, $\bm{y_p}[n]=\left[y_{nM-2}~y_{nM-1}\right]^T$ are two vectors 
-containing the initial conditions of the current block of samples. 
-$\bm{H}$, $\bm{B}$, $\bm{A}$ are three constant matrices of size $M \times M$,
+containing the initial conditions. 
+$\bm{H}$, $\bm{B}$ and $\bm{A}$ are three constant matrices of size $M \times M$,
 $M \times 2$ and $M \times 2$, 
-where $\bm{B}$, $\bm{A}$ are composed by the impulse responses of particular and homogeneous parts of the recursive equation,
+where $\bm{B}$, $\bm{A}$ are composed by the impulse responses of particular and homogeneous parts of recursive equation,
 respectively, 
 
 \begin{equation*}
@@ -62,9 +62,11 @@ i.e.,
             \end{array}\right].  \\
 \end{equation*}
 
-If we want to compute \eqref{eq:block_filtering} by SIMD operation, to realize the parallelism as much as possible,
-the block size $M$ is normally determined to be equal to the largest size of SIMD vector that can be processed, which is the power of 2.
-We use the dashed line inside the matrices to seperate those by SIMD vectors, 
+If we compute \eqref{eq:block_filtering} by SIMD, 
+to realize the parallelism as much as possible,
+the block size $M$ is normally 
+determined to be equal to the largest size of SIMD vector that is supported by the processor.
+We use the dashed line inside the above matrices to seperate those by SIMD vectors, 
 where the memory of data in the same vector are consecutive.
 This procedure makes it easier to figure out how the algorithm is performed by SIMD.
 For example, to compute $\bm{B}\bm{x_p}$, we perform two multiplication and additions by the first column of $\bm{B}$ and the first value of $\bm{x_p}$,
@@ -76,7 +78,7 @@ $\bm{H}\bm{x}+\bm{B}\bm{x_p}$, and the rest 2 FMAs are for the homogeneous solut
 Furthermore, the number of FMAs for each sample of computing \eqref{eq:block_filtering} is $1{+}4/M$, which  
 approaches 1 when $M$ goes to infinity. The computing complexity is $O(1)$ that is independent of the block length. 
 
-\subsection{The Proposed Multi-block Filtering Method}
+\subsection{The Proposed Multi-block Filtering Algorithm}
 
 Compared with the block filtering method, the basic idea of multi-block filtering is to partition the consecutive samples into multiple blocks to exploit more
 parallelism between blocks.
@@ -86,7 +88,7 @@ e.g., the matrix version of input samples after matrix transpose is
 
 \begin{equation*}
     \begin{aligned}
-    \bm{X}^T_{(n)} = \left[
+    \bm{X}^T[n] = \left[
         \arraycolsep=1.0pt\def\arraystretch{1.0}
         \begin{array}{c:c:c:c}
         x_{nM^2} & x_{nM^2+1} & \cdots & x_{nM^2+M-1} \\ 
@@ -96,16 +98,19 @@ e.g., the matrix version of input samples after matrix transpose is
         \end{array}\right]
     \end{aligned}
 \end{equation*}
-We can see that the index of samples in the block after matrix transpose is seperated by the block length $M$.
+The memory of adjacent samples after the matrix transpose is seperated by the block length $M$.
 
 Note, for the rest of paper, we omit the global index $n$ for the matrix representation of samples,
 instead we only focus on the local index of samples inside the matrix, i.e.,
-we only look at $\bm{X}^T\triangleq\bm{X}^T_{(0)}$.
-By doing this, the notations become easier to recognize and it doesn't affect to understanding
-the algorithms performed for one matrix of samples. Furthermore, 
-we use $\bm{X}[n][m]$ to denote the $m$th sample at the $n$th block
-of matrix $\bm{X}$. Next, we are going to explain how exactly the multi-block filtering method works in this paper 
-by seperating into solving the particular and homogeneous parts.
+we only look at $\bm{X}^T {\triangleq} \bm{X}^T[0]$.
+By doing this, the notations become easier to recognize and 
+we can more focus on the algorithm performing for each matrix of samples.
+% By doing this, the notations become easier to recognize and it doesn't affect to understanding
+% the algorithms performed for one matrix of samples. 
+Furthermore, 
+we use $\bm{X}_{[n][m]}$ to denote the $m$th sample at the $n$th block
+of matrix $\bm{X}$. Next, we are going to explain how exactly the multi-block filtering algorithm works in this paper. 
+% by seperating into solving the particular and homogeneous parts.
 
 \subsubsection{Zero initial condition (ZIC)}
 
@@ -118,28 +123,28 @@ The function of ZIC for computing a transposed matrix of samples is given by
     \label{eq:ZIC}
     \begin{aligned}
         &\bm{W}^T = \bm{X}^T 
-        + b_2{\left[\arraycolsep=0.9pt\def\arraystretch{0.9}
+        + b_2{\left[\arraycolsep=1.0pt\def\arraystretch{1.0}
         \begin{array}{c:c:c:c}
         x_{-2} & x_{-1} & \cdots & x_{M-3} \\ 
         x_{M-2} & x_{M-1} & \cdots & x_{2M-3} \\
         \vdots & \vdots & \ddots & \vdots \\
         x_{M^2-M-2} & x_{M^2-M-1} & \cdots & x_{M^2-3} \\
         \end{array}\right]} + \\ 
-        & b_1\left[\arraycolsep=0.9pt\def\arraystretch{0.9}
+        & b_1\left[\arraycolsep=1.0pt\def\arraystretch{1.0}
         \begin{array}{c:c:c:c}
         x_{-1} & x_0 & \cdots & x_{M-2} \\ 
         x_{M-1} & x_M & \cdots & x_{2M-2} \\
         \vdots & \vdots & \ddots & \vdots \\
         x_{M^2-M-1} & x_{M^2-M} & \cdots & x_{M^2-2} \\
         \end{array}\right]
-        {+} a_2\left[\arraycolsep=0.9pt\def\arraystretch{0.9}
+        {+} a_2\left[\arraycolsep=1.0pt\def\arraystretch{1.0}
                 \begin{array}{c:c:c:c:c}
                 0 & 0 & w_0 & \cdots & w_{M-3} \\ 
                 0 & 0 & w_M & \cdots & w_{2M-3} \\
                 \vdots & \vdots & \vdots & \ddots & \vdots \\
                 0 & 0 & w_{M^2-M} & \cdots & w_{M^2-3} \\
                 \end{array}\right] \\
-        &+ a_1\left[\arraycolsep=0.9pt\def\arraystretch{0.9}
+        &+ a_1\left[\arraycolsep=1.0pt\def\arraystretch{1.0}
             \begin{array}{c:c:c:c:c}
             0 & w_0 & w_1 & \cdots & w_{M-2} \\ 
             0 & w_M & w_{M+1} & \cdots & w_{2M-2} \\
@@ -152,20 +157,17 @@ The function of ZIC for computing a transposed matrix of samples is given by
 % in $\bm{X}^T$ are lagged by 1 or 2 with $x_{-1}$ and $x_{-2}$ inserted ahead of samples.
 
 It can be seen that to execute \eqref{eq:ZIC}, two blocks, which contain the initial conditions of the particular part, 
-i.e., the two blocks start at $x_{-2}$ and $x_{-1}$, should be prepared for the first block 
-of input matrix. 
-The above procedure can be done by 2 shuffles 
-with the last two blocks of input matrix.
-After that, the rest of computations can be sequentially forwarded.
+i.e., starting at $x_{-2}$ and $x_{-1}$, should be prepared for computing the first block of $\bm{W}^T$. 
+This procedure takes 2 shuffles with the last two blocks of $\bm{X}^T$.
+Then, the computations can be sequentially forwarded.
 Note that the matrices multiplied by $a_1$ and $a_2$ containing the blocks of $\bm{W}^T$
 brings the dependency problem. 
-However, compared with block filtering method,
-the inherent dependency of solving the recursive equation by multi-block filtering way
-is propagated to samples at every position in block, thus, realizes inter-block parallelism. 
-The number of FMAs for each sample is reduced to $4/M{-}3/M^2$,
-which approaches 0 when $M$ is arbitrary large.
-Put it differently,
-the computing complexity of ZIC is $O(4/M)$, which corresponds to the feature of inter-block parallelism.
+Compared with block filtering,
+the inherent dependency of solving the particular part of recursive equation by multi-block filtering
+is propagated to samples at every position in block, thus, realizes inter-block parallelism.
+The number of FMAs per sample is reduced to $4/M{-}3/M^2$,
+which goes to 0 when $M$ is arbitrary large.
+The computing complexity of ZIC is $O(4/M)$, which corresponds to the feature of inter-block parallelism.
 
 \subsubsection{Initial condition correction (ICC)}
 
@@ -190,28 +192,28 @@ This function is named ICC in this paper and it is given by
         & = \bm{W}^T + \bm{Y_p}^T  \bm{A}^T
     \end{aligned}
 \end{equation}
-where $\bm{Y_p}^T$ denotes a $M \times 2$ matrix, which includes two blocks of initial conditions for the first block of $\bm{W}^T$.
+where $\bm{Y_p}^T$ denotes a $M \times 2$ matrix, which includes two blocks of initial conditions for the first block of $\bm{Y}^T$.
 The function of ICC in \eqref{eq:ICC} is performed essentially by complementing 
-$\bm{W}^T$ of ZIC with the blocks of initial conditions and impulse response sequences both from the homogeneous part.
+$\bm{W}^T$ of ZIC with initial-condition matrix $\bm{Y_p}^T$ and impulse response sequences both from the homogeneous part.
 The challenge of executing \eqref{eq:ICC} is to get $\bm{Y_p}^T$ at the first step,
 meaning we need to compute later outputs before earlier outputs,
 e.g., computing $y_{M-1}$ before $y_0$, which breaks through the inherent dependency of recursive equation.
 However, it can be done since $\bm{Y_p}^T$ is also the initial matrix 
 for the last two blocks of $\bm{Y}^T$ where they share the same samples.
 As a result, one approach to computing $\bm{Y_p}^T$, or alternatively, the last two blocks of $\bm{Y}^T$
-can be performed by the matrix multiplication of the blocks in
-$\bm{W}^T$ and a constant matrix plus the initial conditions of the homogeneous part, i.e.,
+can be performed by the matrix multiplication of the last two blocks of
+$\bm{W}^T$ and a constant matrix plus another matrix multiplication with the initial conditions of the homogeneous part, i.e.,
 
 \begin{equation*}
     \begin{aligned}
         \left[\arraycolsep=1.0pt\def\arraystretch{1.0}
                 \begin{array}{c}
-                \bm{Y}^T[M{-}2] \\  \hdashline
-                \bm{Y}^T[M{-}1] \\ 
+                \bm{Y}^T_{[M-2]} \\ [0.5ex] \hdashline 
+                \bm{Y}^T_{[M-1]} \\ 
                 \end{array}\right] = \bm{T} \left[\arraycolsep=1.0pt\def\arraystretch{1.0}
                 \begin{array}{c}
-                \bm{W}^T[M{-}2] \\  \hdashline
-                \bm{W}^T[M{-}1] \\ 
+                \bm{W}^T_{[M-2]} \\ [0.5ex] \hdashline
+                \bm{W}^T_{[M-1]} \\ 
                 \end{array}\right] + \bm{D} \left[\arraycolsep=1.0pt\def\arraystretch{1.0}
                 \begin{array}{c}
                 y_{-2} \\  
@@ -220,13 +222,18 @@ $\bm{W}^T$ and a constant matrix plus the initial conditions of the homogeneous 
         % \bm{y_e} = \bm{T} \bm{w_e} + \bm{D}\bm{y_p}
     \end{aligned}
 \end{equation*}
-where $\bm{T}$ and $\bm{D}$ are two constant matrices of size $2M \times 2M$ and $2M \times 2$
-composed by the last two elements of the two impulse response sequences in $\bm{A}$.
-The problem of this approach is that $\bm{T}$ is oversized.
-The matrix multiplication of $\bm{T}$ and the long vector including the last two blocks of $\bm{W}^T$ 
-has to be computed by $4M$ FMAs because
-the largest size of SIMD vector that can be processed is restricted by $M$.
-Due to the non-efficiency, we don't explain more details of this method,
+% where $\bm{T}$ and $\bm{D}$ are two constant matrices of size $2M \times 2M$ and $2M \times 2$
+% composed by the last two elements of the two impulse response sequences in $\bm{A}$.
+where $\bm{T}$, $\bm{D}$ are two constant matrices of size $2M \times 2M$ and $2M \times 2$.
+The problem of this method is that $\bm{T}$ is oversized.
+The matrix multiplication of $\bm{T}$ and the long vector of $\bm{W}^T$
+% including the last two blocks of $\bm{W}^T$ 
+has to be computed by $4M$ FMAs 
+% because
+% the largest size of SIMD vector that can be processed is restricted by $M$.
+since the length of supported SIMD instructions is restricted by $M$.
+% Due to the non-efficiency, 
+Thus, we don't explain the details of this method,
 instead we propose a more efficient way to computing 
 $\bm{Y_p}^T$, which is based on the idea of recursive doubling.
 
@@ -240,21 +247,24 @@ The basic idea of recursive doubling method is to split the computation of a fun
 which can be computed in parallel, and sub-functions are split again and again to increase the degree of parallelism.
 Thus, the computating complexity is reduced from $O(M)$ to $O(\log_2M)$.
 Figure \ref{fig:Recursive_doubling} illustrates how to compute the last two blocks of $\bm{Y}^T$ by 
-recursive doubling when $M=8$, where $\bm{y_e}$ denotes a vector including the two samples at the same position 
-of the last two blocks
+recursive doubling if $M=8$, where $\bm{y_e}$ denotes the vector including two samples at the same position 
+of $\bm{Y}^T_{[M-2]}$, $\bm{Y}^T_{[M-1]}$,
 i.e., $\bm{y_e}[n] = \left[y_{(n+1)M-2} ~ y_{(n+1)M-1}\right]^T$, as well as $\bm{w_e}$.
+% , where $\bm{y_e}$ denotes a vector including the two samples at the same position 
+% of the last two blocks
+% i.e., $\bm{y_e}[n] = \left[y_{(n+1)M-2} ~ y_{(n+1)M-1}\right]^T$, as well as $\bm{w_e}$.
 $\bm{C}$ is a constant matrix
-of size $2 \times 2$ composed by the last two elements of the two impulse responses in $\bm{A}$, i.e.,
+of size $2 \times 2$ composed by the last two pairs of impulse responses in $\bm{A}$, i.e.,
 
 \begin{equation*}
     \bm{C} = \left[\arraycolsep=1.0pt\def\arraystretch{1.0}
         \begin{array}{cc}
-        \bm{A}[0][M{-}2] & \bm{A}[1][M{-}2] \\ 
-        \bm{A}[0][M{-}1] & \bm{A}[1][M{-}1] \\ 
+        \bm{A}_{[0][M-2]} & \bm{A}_{[1][M-2]} \\ 
+        \bm{A}_{[0][M-1]} & \bm{A}_{[1][M-1]} \\ 
         \end{array}\right].
 \end{equation*}
-The accuracy of recursive doubling of computing the last two blocks of $\bm{Y}^T$ in Figure \ref{fig:Recursive_doubling} can be checked by
-$\bm{y_e}[7]$,
+The accuracy of recursive doubling in Figure \ref{fig:Recursive_doubling} can be checked by
+$\bm{y_e}[7]$, where
 
 \begin{equation}
     \begin{aligned}
@@ -265,54 +275,103 @@ $\bm{y_e}[7]$,
     \end{aligned}
 \end{equation}
 
-Then, we discuss how the recursive doubling algorithm can be performed by SIMD.
-It can be seen the $M$ numbers of input $\bm{w_e}[n]$
-essentially interleave the samples of the last two blocks of $\bm{W}^T$.
-Thus, instead of doing the matrix multiplication, the computation can be partitioned into 4 FMAs by SIMD at each
-recursion. Besides that, two shuffles are needed to prepare the vectors of branches for FMAs (at each recursion). 
-Three things should also be noted. Firstly, the recursive doubling algorithm takes totally $\log_2M$ numbers of recursion.
-Secondly, it also needs extra 4 FMAs to initialize the computing progress, i.e., to compute $\bm{y_e}[0]$.
-Lastly, after computing the last two blocks of $\bm{Y^T}$, 
-we need 2 shuffles to get $\bm{Y_p}^T$ for executing \eqref{eq:ICC}. 
-Thus, 
-the algorithm of calculating $\bm{Y_p}^T$ by SIMD and recursive doubling method is shown below 
-
-\begin{algorithm}
+\begin{algorithm}[t]
     \caption{Computing $\bm{Y_p}^T$ by SIMD and recursive doubling}\label{recursive_doubling}
     \begin{algorithmic}[1]
-        \Procedure{Yp\_RD}{$\bm{W}^T[M][M],\bm{C}[2][2],y_{-2},y_{-1}$} 
-            \State $\bm{Y}^T[M{-}2] \gets \bm{W}^T[M{-}2] + y_{-2}\times \left[\bm{C}[0][0] ~ 0 \cdots 0\right]$ 
-            \Statex $ \quad\quad\quad\quad\quad\quad\quad + y_{-1}\times \left[\bm{C}[0][1] ~ 0 \cdots 0\right]$ \Comment{Initialization}
-            \State $\bm{Y}^T[M{-}1] \gets \bm{W}^T[M{-}1] + y_{-2}\times \left[\bm{C}[1][0] ~ 0 \cdots 0\right]$ 
-            \Statex $ \quad\quad\quad\quad\quad\quad\quad + y_{-1}\times \left[\bm{C}[1][1] ~ 0 \cdots 0\right]$ 
+        \Procedure{Yp\_RD}{$\bm{W}^T[~][~],\bm{C}[~][~],y_{-2},y_{-1}$} 
+            \State $\bm{Y}^T_{[M-2]} \gets \bm{W}^T_{[M-2]} + y_{-2}\times \left[\bm{C}_{[0][0]} ~ 0 \cdots 0\right]$ 
+            \Statex $ \quad\quad\quad\quad\quad\quad\quad + y_{-1}\times \left[\bm{C}_{[0][1]} ~ 0 \cdots 0\right]$ 
+            \State $\bm{Y}^T_{[M-1]} \gets \bm{W}^T_{[M-1]} + y_{-2}\times \left[\bm{C}_{[1][0]} ~ 0 \cdots 0\right]$ 
+            \Statex $ \quad\quad\quad\quad\quad\quad\quad + y_{-1}\times \left[\bm{C}_{[1][1]} ~ 0 \cdots 0\right]$ \Comment{Initialization}
             \For{$n \gets 1$ to $\log_2M$}
                 \If{$n==1$} 
-                    \State $b_2 \gets $ shuffle $\bm{Y}^T[M{-}2]$: move values at odd 
-                    \Statex $\quad\quad\quad\quad\quad$ indexes $i$ to $i+1$ and set zeros at odd indexes. 
-                    \State $b_1 \gets $ shuffle $\bm{Y}^T[M{-}1]$: as above.
-                    \State $\bm{Y}^T[M{-}2] \gets \bm{Y}^T[M{-}2] + b_{2}\times \left[0 ~ \bm{C}[0][0]\cdots \right]$ 
-                    \Statex $ \quad\quad\quad\quad\quad\quad\quad\quad\quad\quad + b_{1}\times \left[0 ~ \bm{C}[0][1] \cdots 0 ~ \bm{C}[0][1]\right]$ 
-                    \State $\bm{Y}^T[M{-}1] \gets \bm{Y}^T[M{-}1] + b_{2}\times \left[0 ~ \bm{C}[1][0]\cdots \right]$ 
-                    \Statex $ \quad\quad\quad\quad\quad\quad\quad\quad\quad\quad + b_{1}\times \left[0 ~ \bm{C}[1][1]\cdots 0 ~ \bm{C}[1][1]\right]$ 
+                    \State $\bm{b_2} \gets $ shuffle $\bm{Y}^T_{[M{-}2]}$: move samples at odd in-
+                    \Statex $\quad\quad\quad\quad\quad\quad$ dexes $i$ to $i+1$ and set zeros at odd indexes. 
+                    \State $\bm{b_1} \gets $ shuffle $\bm{Y}^T_{[M-1]}$: as above.
+                    \State $\bm{Y}^T_{[M-2]} \gets \bm{Y}^T_{[M-2]} {+} \bm{b_{2}}{\times} \left[0 ~ \bm{C}_{[0][0]}\cdots0 ~ \bm{C}_{[0][0]} \right]$ 
+                    \Statex $ \quad\quad\quad\quad\quad\quad\quad\quad\quad\quad\quad~~~ + \bm{b_{1}}\times \left[0 ~ \bm{C}_{[0][1]} \cdots 0 ~ \bm{C}_{[0][1]}\right]$ 
+                    \State $\bm{Y}^T_{[M-1]} \gets \bm{Y}^T_{[M-1]} {+} \bm{b_{2}}{\times} \left[0 ~ \bm{C}_{[1][0]}\cdots 0 ~ \bm{C}_{[1][0]}\right]$ 
+                    \Statex $ \quad\quad\quad\quad\quad\quad\quad\quad\quad\quad\quad~~~ + \bm{b_{1}}\times \left[0 ~ \bm{C}_{[1][1]}\cdots 0 ~ \bm{C}_{[1][1]}\right]$ 
                 \ElsIf{$n==2$}
-                    \State $b_2 \gets $ shuffle $\bm{Y}^T[M{-}2]$: move every second
-                    \Statex $\quad\quad\quad\quad\quad$ values at $i$ to $i{+}1$, $i{+}2$ and set zeros at $i$, $i{-}1$.
-                    \State $b_1 \gets $ shuffle $\bm{Y}^T[M{-}1]$: as above.
-                    \State $\bm{Y}^T[M{-}2] \gets \bm{Y}^T[M{-}2] + b_{2} \left[0 ~ 0 ~ \bm{C}[0][0]\cdots \right]$ 
-                    \Statex $ \quad\quad\quad\quad\quad\quad~~ + b_{1}  \left[0 ~ 0 ~ \bm{C}[0][1] ~ \bm{C}^2[0][1] \cdots \bm{C}^2[0][1]\right]$ 
-                    \State $\bm{Y}^T[M{-}1] \gets \bm{Y}^T[M{-}1] + b_{2} \left[0 ~ 0 ~ \bm{C}[1][0]\cdots \right]$ 
-                    \Statex $ \quad\quad\quad\quad\quad\quad~~ + b_{1}  \left[0 ~ 0 ~ \bm{C}[1][1] ~ \bm{C}^2[1][1] \cdots \bm{C}^2[1][1]\right]$ 
-                    \State \textbf{continue} \Comment{follow above rules to update $\bm{Y}^T$}
+                    \State $\bm{b_2} \gets $ shuffle $\bm{Y}^T_{[M-2]}$: move every second sam-
+                    \Statex $\quad\quad\quad\quad\quad~~$ ples at $i$ to $i{+}1$, $i{+}2$ and set zeros at $i$, $i{-}1$.
+                    \State $\bm{b_1} \gets $ shuffle $\bm{Y}^T_{[M-1]}$: as above.
+                    \State $\bm{Y}^T_{[M-2]} \gets \bm{Y}^T_{[M-2]} {+} \bm{b_{2}} {\times} \left[0 ~ 0 ~ \bm{C}_{[0][0]} ~ \bm{C}^2_{[0][0]}\cdot\cdot \right]$ 
+                    \Statex $ \quad\quad\quad\quad\quad~~~ + \bm{b_{1}} {\times} \left[0 ~ 0 ~ \bm{C}_{[0][1]} ~ \bm{C}^2_{[0][1]} \cdots \bm{C}_{[0][1]} ~ \bm{C}^2_{[0][1]}\right]$ 
+                    \State $\bm{Y}^T_{[M-1]} \gets \bm{Y}^T_{[M-1]} {+} \bm{b_{2}} {\times} \left[0 ~ 0 ~ \bm{C}_{[1][0]} ~ \bm{C}^2_{[1][0]} \cdot\cdot \right]$ 
+                    \Statex $ \quad\quad\quad\quad\quad~~~ + \bm{b_{1}} {\times}  \left[0 ~ 0 ~ \bm{C}_{[1][1]} ~ \bm{C}^2_{[1][1]} \cdots \bm{C}_{[1][1]} ~ \bm{C}^2_{[1][1]}\right]$ 
+                    \State \textbf{continue} $\quad\quad\quad\quad~~$ \Comment{follow the above rules}
+                    \Statex $\quad\quad\quad\quad\quad\quad\quad\quad\quad\quad\quad\quad~~$ and Figure \ref{fig:Recursive_doubling} to update $\bm{Y}^T$
                 \EndIf
             \EndFor
-            \State $\bm{Y_p}^T[0] \gets $ shuffle $\bm{Y}^T[M{-}2]$: shift all values by 1 index
+            \State $\bm{Y_p}^T$$_{[0]}$ $\gets $ shuffle $\bm{Y}^T_{[M-2]}$: shift all samples by 1 index
             \Statex $\quad\quad\quad\quad\quad\quad\quad\quad\quad$ and set $y_{-2}$ at the first index.
-            \State $\bm{Y_p}^T[1] \gets $ shuffle $\bm{Y}^T[M{-}1]$: shift all values by 1 index
+            \State $\bm{Y_p}^T$$_{[1]}$ $ \gets $ shuffle $\bm{Y}^T_{[M-1]}$: shift all samples by 1 index
             \Statex $\quad\quad\quad\quad\quad\quad\quad\quad\quad$ and set $y_{-1}$ at the first index.            
             \State \textbf{return} $\bm{Y_p}^T$ 
         \EndProcedure
     \end{algorithmic}
 \end{algorithm}
+
+Then, we discuss how Figure \ref{fig:Recursive_doubling} is performed by SIMD.
+The $M$ numbers of input $\bm{w_e}[n]$ essentially interleave the samples of $\bm{Y}^T_{[M-2]}$ and $\bm{Y}^T_{[M-1]}$.
+Thus, instead of matrix multiplication,
+the computation can be partitioned into 4 FMAs by SIMD at each recursion.
+Besides that, two shuffles are needed to prepare the vectors of branches for FMAs (at each recursion). 
+Three things should also be noted. First, the recursive doubling takes totally $\log_2M$ numbers of recursion.
+Second, it needs extra 4 FMAs to initialize the computing progress, i.e., to compute $\bm{y_e}[0]$.
+Finally, after computing the last two blocks of $\bm{Y^T}$, 
+we need 2 shuffles to get $\bm{Y_p}^T$ for executing \eqref{eq:ICC}. 
+The algorithm of calculating $\bm{Y_p}^T$ by SIMD and recursive doubling is shown in Algorithm \ref{recursive_doubling}. 
+
+% Then, we discuss how recursive doubling algorithm can be performed by SIMD.
+% It can be seen the $M$ numbers of input $\bm{w_e}[n]$
+% essentially interleave the samples of the last two blocks of $\bm{W}^T$.
+% Thus, instead of doing the matrix multiplication, the computation can be partitioned into 4 FMAs by SIMD at each
+% recursion. Besides that, two shuffles are needed to prepare the vectors of branches for FMAs (at each recursion). 
+% Three things should also be noted. Firstly, the recursive doubling algorithm takes totally $\log_2M$ numbers of recursion.
+% Secondly, it also needs extra 4 FMAs to initialize the computing progress, i.e., to compute $\bm{y_e}[0]$.
+% Lastly, after computing the last two blocks of $\bm{Y^T}$, 
+% we need 2 shuffles to get $\bm{Y_p}^T$ for executing \eqref{eq:ICC}. 
+% Thus, 
+% the algorithm of calculating $\bm{Y_p}^T$ by SIMD and recursive doubling method is shown below 
+
+% \begin{algorithm}
+%     \caption{Computing $\bm{Y_p}^T$ by SIMD and recursive doubling}\label{recursive_doubling}
+%     \begin{algorithmic}[1]
+%         \Procedure{Yp\_RD}{$\bm{W}^T[M][M],\bm{C}[2][2],y_{-2},y_{-1}$} 
+%             \State $\bm{Y}^T[M{-}2] \gets \bm{W}^T[M{-}2] + y_{-2}\times \left[\bm{C}[0][0] ~ 0 \cdots 0\right]$ 
+%             \Statex $ \quad\quad\quad\quad\quad\quad\quad + y_{-1}\times \left[\bm{C}[0][1] ~ 0 \cdots 0\right]$ \Comment{Initialization}
+%             \State $\bm{Y}^T[M{-}1] \gets \bm{W}^T[M{-}1] + y_{-2}\times \left[\bm{C}[1][0] ~ 0 \cdots 0\right]$ 
+%             \Statex $ \quad\quad\quad\quad\quad\quad\quad + y_{-1}\times \left[\bm{C}[1][1] ~ 0 \cdots 0\right]$ 
+%             \For{$n \gets 1$ to $\log_2M$}
+%                 \If{$n==1$} 
+%                     \State $b_2 \gets $ shuffle $\bm{Y}^T[M{-}2]$: move values at odd 
+%                     \Statex $\quad\quad\quad\quad\quad$ indexes $i$ to $i+1$ and set zeros at odd indexes. 
+%                     \State $b_1 \gets $ shuffle $\bm{Y}^T[M{-}1]$: as above.
+%                     \State $\bm{Y}^T[M{-}2] \gets \bm{Y}^T[M{-}2] + b_{2}\times \left[0 ~ \bm{C}[0][0]\cdots \right]$ 
+%                     \Statex $ \quad\quad\quad\quad\quad\quad\quad\quad\quad\quad + b_{1}\times \left[0 ~ \bm{C}[0][1] \cdots 0 ~ \bm{C}[0][1]\right]$ 
+%                     \State $\bm{Y}^T[M{-}1] \gets \bm{Y}^T[M{-}1] + b_{2}\times \left[0 ~ \bm{C}[1][0]\cdots \right]$ 
+%                     \Statex $ \quad\quad\quad\quad\quad\quad\quad\quad\quad\quad + b_{1}\times \left[0 ~ \bm{C}[1][1]\cdots 0 ~ \bm{C}[1][1]\right]$ 
+%                 \ElsIf{$n==2$}
+%                     \State $b_2 \gets $ shuffle $\bm{Y}^T[M{-}2]$: move every second
+%                     \Statex $\quad\quad\quad\quad\quad$ values at $i$ to $i{+}1$, $i{+}2$ and set zeros at $i$, $i{-}1$.
+%                     \State $b_1 \gets $ shuffle $\bm{Y}^T[M{-}1]$: as above.
+%                     \State $\bm{Y}^T[M{-}2] \gets \bm{Y}^T[M{-}2] + b_{2} \left[0 ~ 0 ~ \bm{C}[0][0]\cdots \right]$ 
+%                     \Statex $ \quad\quad\quad\quad\quad\quad~~ + b_{1}  \left[0 ~ 0 ~ \bm{C}[0][1] ~ \bm{C}^2[0][1] \cdots \bm{C}^2[0][1]\right]$ 
+%                     \State $\bm{Y}^T[M{-}1] \gets \bm{Y}^T[M{-}1] + b_{2} \left[0 ~ 0 ~ \bm{C}[1][0]\cdots \right]$ 
+%                     \Statex $ \quad\quad\quad\quad\quad\quad~~ + b_{1}  \left[0 ~ 0 ~ \bm{C}[1][1] ~ \bm{C}^2[1][1] \cdots \bm{C}^2[1][1]\right]$ 
+%                     \State \textbf{continue} \Comment{follow above rules to update $\bm{Y}^T$}
+%                 \EndIf
+%             \EndFor
+%             \State $\bm{Y_p}^T[0] \gets $ shuffle $\bm{Y}^T[M{-}2]$: shift all values by 1 index
+%             \Statex $\quad\quad\quad\quad\quad\quad\quad\quad\quad$ and set $y_{-2}$ at the first index.
+%             \State $\bm{Y_p}^T[1] \gets $ shuffle $\bm{Y}^T[M{-}1]$: shift all values by 1 index
+%             \Statex $\quad\quad\quad\quad\quad\quad\quad\quad\quad$ and set $y_{-1}$ at the first index.            
+%             \State \textbf{return} $\bm{Y_p}^T$ 
+%         \EndProcedure
+%     \end{algorithmic}
+% \end{algorithm}
 
 
 % principle of performing recursive doubling in Figure \ref{fig:Recursive_doubling} can be explained by
@@ -363,16 +422,25 @@ the algorithm of calculating $\bm{Y_p}^T$ by SIMD and recursive doubling method 
 % in Figure \ref{fig:Recursive_doubling_for_Ye} takes 4 ALUs and 2 shuffles. In addition to the initialization of RD 
 % and later forwarding, the entire number of ALUs that the proposed ICC algorithm takes is $4\log_2M+2M$, i.e., $4\log_2M/M^2+2/M$ per sample, which approaches 0 when $M$ goes to infinity.
 
-Note, the SIMD vector involving $\bm{C}$ in Algorithm \ref{recursive_doubling} can be pre-computed.
-The number of FMAs for getting $\bm{Y_p}^T$ by recursive doubling is $4\log_2M+4$. In addition with $2M-4$ FMAs for forwarding the first $M{-}2$ blocks of $\bm{Y}^T$,
-the total number of FMAs that the function of ICC takes is $4\log_2M+2M$, which converts to $4\log_2M/M^2{+}2/M$ FMAs per sample.
-On the other hand, the number of shuffle should also be taken care of in the process of getting $\bm{Y_p}^T$,
+Note, in Algorithm \ref{recursive_doubling}, the SIMD vector including the elem\-ents of $\bm{C}$ 
+can be pre-computed. Thus, the number of FMAs for getting $\bm{Y_p}^T$ by SIMD and recursive doubling is $4\log_2M+4$.
+In addition with $2M-4$ FMAs for forwarding the first $M{-}2$ blocks of $\bm{Y}^T$,
+the total number of FMAs that the ICC takes is $4\log_2M+2M$, which converts to $4\log_2M/M^2{+}2/M$ FMAs per sample.
+The number of shuffles should also be taken care of in the process of getting $\bm{Y_p}^T$,
 which is taken by $(2\log_2M+2)/M^2$ per sample.
 
-Now we see how our proposed multi-block filtering method is more efficient than the block filtering. The number of ALUs (FMAs and shuffles) that our proposed algorithm takes
-besides matrix transpose is $2\log_2M/M+6\log_2M/M^2+6/M+1/M^2$ per sample (matrix transpose takes $\log_2M/M$ shuffles), which
+
+
+% Note, the SIMD vector involving $\bm{C}$ in Algorithm \ref{recursive_doubling} can be pre-computed.
+% The number of FMAs for getting $\bm{Y_p}^T$ by recursive doubling is $4\log_2M+4$. In addition with $2M-4$ FMAs for forwarding the first $M{-}2$ blocks of $\bm{Y}^T$,
+% the total number of FMAs that the function of ICC takes is $4\log_2M+2M$, which converts to $4\log_2M/M^2{+}2/M$ FMAs per sample.
+% On the other hand, the number of shuffle should also be taken care of in the process of getting $\bm{Y_p}^T$,
+% which is taken by $(2\log_2M+2)/M^2$ per sample.
+
+Now we see how our proposed multi-block filtering algori\-thm is more efficient than block filtering. The number of FMAs plus shuffles that our proposed algorithm takes
+besides the matrix transpose is $2\log_2M/M+6\log_2M/M^2+6/M+1/M^2$ per sample (matrix transpose takes $\log_2M/M$ shuffles), which
 attains a $O(\log_2M/M)$ computing complexity. Compared with the block filtering's $O(1)$, our proposed algorithm
-achieves a linear speed up propotional to the length of SIMD instruction that the micro-architecture can perform.
+achieves a linear speed up propotional to the length of SIMD instruction that the processor can support.
 For example, with a very modern CPU, the ability of dealing with SIMD instruction has been enlarged to 32 floating numbers. By plugging $M=32$,
 our proposed algorithm based on matrix processing can roughly save 2.2 times number of ALUs than vector filtering.
 

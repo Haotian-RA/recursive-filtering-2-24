@@ -5,12 +5,12 @@
 
 \begin{figure}[t]
     \centerline{\includegraphics[width=3.3in]{poles_compare_zoom.png}}
-    \caption{Zero-pole plot of a 10th order recursive filter of direct and cascaded form with rounding error (zoomed)}
+    \caption{Zero-pole plot of a 10th order recursive filter of direct and cascaded form with rounding error}
     \label{fig:poles_compare_zoom}
 \end{figure}
 
-We start discussing the importance of implementing the high order recursive filter in cascaded form, i.e.,
-to avoid rounding error issue happening in computing. 
+We start showing the importance of implementing the higher order recursive filter by cascaded form, i.e.,
+to avoid rounding error issue happening when machine computing. 
 
 Consider designing a 10th order lowpass recursive filter by 4 pairs of complex-conjugate poles and two real poles, where the poles are
 $\frac{6}{7} \pm j\frac{\sqrt{11}}{7}$, $\frac{10}{11} \pm j\frac{\sqrt{17}}{11}$, $\frac{8}{9} \pm j\frac{\sqrt{13}}{9}$, $\frac{6}{7} \pm j\frac{2}{7}$,
@@ -23,7 +23,7 @@ in the zoomed zero-pole plot as Figure \ref{fig:poles_compare_zoom}.
 % in the zoomed zero-pole plot as Figure \ref{fig:poles_compare_zoom}.
 % Then, 
 To get the coefficients of the recursive equation, we basically do the convolution with the number of poles, which depends on
-the number of subsystems. 
+the number of sub-systems. 
 However,
 when building the direct form of recursive equation,
 since the coefficients are related to all the poles,
@@ -33,81 +33,142 @@ may cause some poles near the unit circle moving outside the unit circle.
 For example, in Figure \ref{fig:poles_compare_zoom}, the data type 
 % of the poles and filter coefficients are 
 is used as the 32-bit floating number.
-We can see that some poles after building the recursive filter in direct form 
-moves outside the unit circle, which makes the filtering system unstable.
-The solution is to seperating the system into multiple second order subsystems,
-where the poles perfectly match the desired poles (thus stable).
+We observe that some poles after building the recursive filter in direct form 
+moves outside the unit circle, i.e., the filtering system becomes unstable.
+The solution to correct-ing the system is by partitioning it into multiple second order
+sub-systems, where the poles will perfectly match the desired poles, thus stable.
 
 \subsection{Testing Results of Recursive Filtering Algorithms}
 
-We used two Intel CPU based micro-architectures, one for Intel Haswell CPU with the clock frequency 3.3 GHz
-and the other one for Skylake CPU with 4.0 GHz clock frequency, for doing this experiment.
-Both CPUs support AVX2 and FMA3 instruction sets. 
-The algorithms are programmed by C++ and the SIMD instructions are realized
-by the mean of vector class library (VCL) \cite{Agner_04}.
-For compiler option, the latest version of Clang 15.0.0
-is used, and to allow efficient code optimization, 
-the compiling flags -O3, -march=native, -fno-trapping-math, -fno-math-errno are set with the instruction set flags -mavx2 and -mfma. 
-Furthermore, all the algorithms are tested under a single core and single thread environment.
-In order to see that the performance of algorithms are scaled by the capacity of SIMD instructions, two 
-different lengths of SIMD vector, i.e., $M=4$ and $M=8$, which are allowed in AVX2, are used. 
+We used two Intel microarchitecture based systems, one for Haswell CPU with clock frequency 3.3 GHz and
+the other one for Skylake CPU with 4.0 GHz, for doing the experiment. Both CPUs support AVX2 and FMA3
+instruction set. The algorithm is programmed by C++ and the SIMD operations are realized
+by the vector class library (VCL) \cite{Agner_04}. 
+As for compiler options, in Table \ref{table:number_of_instructions_in_clock_cycles}, where
+we measure the clock cycles of programs under local system,
+Clang 15.0.0 is used, and to allow efficient code optimization,
+-O3, -march=native, -fno-trapping-math, -fno-math-errno
+are used with instruction set flags -mavx2 and -mfma. 
+In Table \ref{table:number_of_instructions_of_functions_in_assembly} and \ref{table:number_of_instructions_of_cascaded2_in_assembly},
+we use compiler explorer (CE) \cite{Matt_12} to 
+look at the number of SIMD instructions in assembly code.
+In CE, the compiler options Clang 16.0.0 and -mavx512f are set to enable 16-length floating number vectors. 
+
+% The algorithms are programmed by C++
+
+
+% We used two Intel CPU based micro-architectures, one for Intel Haswell CPU with the clock frequency 3.3 GHz
+% and the other one for Skylake CPU with 4.0 GHz clock frequency, for doing this experiment.
+% Both CPUs support AVX2 and FMA3 instruction sets. 
+% The algorithms are programmed by C++ and the SIMD instructions are realized
+% by the mean of vector class library (VCL) \cite{Agner_04}.
+% For compiler option, the latest version of Clang 15.0.0
+% is used, and to allow efficient code optimization, 
+% the compiling flags -O3, -march=native, -fno-trapping-math, -fno-math-errno are set with the instruction set flags -mavx2 and -mfma. 
+% Furthermore, all the algorithms are tested under a single core and single thread environment.
+% In order to see that the performance of algorithms are scaled by the capacity of SIMD instructions, two 
+% different lengths of SIMD vector, i.e., $M=4$ and $M=8$, which are allowed in AVX2, are used. 
 
 \begin{table}[t]
     \caption{The number of SIMD instructions (per sample) for functions and options in assembly code}  % title of Table
     \centering % used for centering table
-    \setlength{\tabcolsep}{1.6pt}
+    \setlength{\tabcolsep}{1.2pt}
     \begin{tabular}{c|c|c|c|c|c|c|c|c|c|c} % centered columns (4 columns)
     \hline\hline %inserts double horizontal lines
-    function & \multicolumn{3}{c|}{FMA} & \multicolumn{3}{c|}{shuffle} & \multicolumn{2}{c|}{broadcast} & \multicolumn{2}{c}{load} \\ [0.3ex]
+    function & \multicolumn{3}{c|}{FMA} & \multicolumn{3}{c|}{shuffle} & \multicolumn{2}{c|}{broadcast} & \multicolumn{2}{c}{load} \\ [0.4ex]
     \cline{2-11}
-    name & $M{=}4$ & $M{=}8$ & ratio & $M{=}4$ & $M{=}8$ & ratio & $M{=}4$ & $M{=}8$ & $M{=}4$ & $M{=}8$ \\ [0.3ex] % inserts table
+    name & $M{=}8$ & $M{=}16$ & ratio & $M{=}8$ & $M{=}16$ & ratio & $M{=}8$ & $M{=}16$ & $M{=}8$ & $M{=}16$ \\ [0.4ex] % inserts table
     \hline
-    NT ZIC & 1.50 & 1.25 & -0.17 & 0.00 & 0.00 & $\backslash$ & 1.50 & 1.25 & 2.25 & 1.63 \\ [0.3ex]
-    NT ICC & 0.50 & 0.25 & -0.50 & 0.00 & 0.00 & $\backslash$ & 0.50 & 0.25 & 1.25 & 0.63 \\ [0.3ex]
-    T ZIC & 0.81 & 0.45 & -0.44 & 0.13 & 0.03 & -0.77 & 0.25 & 0.06 & 0.63 & 0.22 \\ [0.3ex]
-    T ICC & 1.00 & 0.44 & -0.56 & 0.38 & 0.13 & -0.66 & 0.38 & 0.22 & 1.25 & 0.44 \\ [0.3ex]
-    Transpose & 0.00 & 0 & $\backslash$ & 0.75 & 0.50 & -0.33 & 0.00 & 0.00 & 0.25 & 0.13 \\ [0.3ex]
-    Option 1 & 2.00 & 1.5 & -0.25 & 0.00 & 0.00 & $\backslash$ & 2.00 & 1.50 & 3.25 & 2.13 \\ [0.3ex]
-    Option 2 & 1.32 & 0.70 & -0.47 & 1.63 & 1.03 & -0.37 & 0.75 & 0.31 & 0.88 & 0.28 \\ [0.3ex]
-    Option 3 & 1.81 & 0.89 & -0.51 & 2.00 & 1.16 & -0.42 & 0.63 & 0.28 & 1.63 & 0.53 \\ [0.3ex]
-    Option 3+2 & 3.13 & 1.59 & -0.49 & 2.13 & 1.19 & -0.44 & 1.38 & 0.59 & 2.25 & 0.69 \\ [0.3ex]
-    Option 2+2 & 2.63 & 1.41 & -0.46 & 3.25 & 2.06 & -0.37 & 1.50 & 0.63 & 1.50 & 0.44 \\ [0.3ex]
-    Option 3+3 & 3.63 & 1.78 & -0.51 & 2.50 & 1.31 & -0.48 & 1.25 & 0.56 & 3.00 & 0.94 \\ [1ex]
+    NT ZIC & 1.25 & 1.13 & -0.10 & 0.00 & 0.00 & $\backslash$ & 1.25 & 1.13 & 1.50 & 1.25 \\ [0.4ex]
+    NT ICC & 0.25 & 0.13 & -0.48 & 0.00 & 0.00 & $\backslash$ & 0.25 & 0.13 & 0.50 & 0.25 \\ [0.4ex]
+    T ZIC & 0.45 & 0.24 & -0.47 & 0.03 & 0.01 & -0.67 & 0.06 & 0.02 & 0.22 & 0.09 \\ [0.4ex]
+    T ICC & 0.44 & 0.19 & -0.57 & 0.13 & 0.04 & -0.69 & 0.22 & 0.12 & 0.47 & 0.17 \\ [0.4ex]
+    Transpose & 0.00 & 0.00 & $\backslash$ & 0.38 & 0.25 & -0.34 & 0.00 & 0.00 & 0.13 & 0.08 \\ [0.4ex]
+    Option 1 & 1.5 & 1.25 & -0.17 & 0.00 & 0.00 & $\backslash$ & 1.50 & 1.25 & 1.88 & 1.44 \\ [0.4ex]
+    Option 2 & 0.70 & 0.36 & -0.49 & 0.78 & 0.51 & -0.35 & 0.31 & 0.14 & 0.30 & 0.11 \\ [0.4ex]
+    Option 3 & 0.89 & 0.43 & -0.52 & 0.91 & 0.55 & -0.40 & 0.28 & 0.13 & 0.58 & 0.25 \\ [0.4ex]
     \hline
     \end{tabular}
-    \label{table:number_of_instructions_in_assembly} % is used to refer this table in the text
+    \label{table:number_of_instructions_of_functions_in_assembly} % is used to refer this table in the text
 \end{table}
 
-Table \ref{table:number_of_instructions_in_assembly} shows the number of SIMD instructions per sample (IPS) for functions,
-second order options and two cascaded second order options in assembly language. 
-The ratio stands for the ratio of the reduced IPS,
-which is computed by the difference 
-between the IPS of $M{=}4$ and of $M{=}8$ over IPS of $M{=}4$. 
-The minus sign basically tells the performance
-of all algorithms can be improved by increasing the length of SIMD instruction.
-One important observation is that the (absolute) ratio of FMAs for three options are increasing,
-as well as the ratio of shuffle for option 2 and option 3. This explains our proposed algorithm by multi-block filtering 
-relying on matrix of samples has a better scale with the length of SIMD vector than vector based block filtering algorithm.
-We can also get the similar conclusion by comparing the ratio of FMAs among functions, e.g., NT ZIC and T ZIC, NT ICC and T ICC.
+Table \ref{table:number_of_instructions_of_functions_in_assembly} shows the number of SIMD instructions
+per sample (IPS) for functions and options in assembly code. 
+The number of FMAs, shuffles and broadcasts in Table \ref{table:number_of_instructions_of_functions_in_assembly}
+matches to Table \ref{table:number_of_instructions} meaning the correctness of our explanation of the proposed algorithms.
+It also shows our algorithm can be implemented in very modern CPU that supports AVX512.
+The ratio stands for the ratio of reduced IPS, which is computed by the 
+difference between the IPS of $M{=}8$ and $M{=}16$ over the IPS of $M{=}8$.
+The minus sign shows the performance of all the algorithms can be improved by increasing the length of the SIMD instructions.
+More importantly, we can see the (absolute) ratio of FMAs and shuffles of options is increasing with the level of parallelism
+(option 1 realizes intra-block parallelism, option 3 inter-block parallelism, option 2 realizes half of both).
+Thus, our proposed algorithm has a better scale with the improvement of the CPU computing ability
+than the block filtering algorithm and mixed filtering algorithm in \cite{Jaewoo_09}.
 
-In Table \ref{table:number_of_instructions_in_assembly}, we also record the number of SIMD instructions for different combinations of second order filter options.
-It can be seen that since option 2 has the smallest IPS of FMA, the cascaded option 2 also has the smallest IPS of FMA; 
-however, it suffers the largest IPS of shuffle because the big number of shuffle comes from four matrix transpose functions. 
-Another combination is option 3 and option 2. This mixed combination has larger number of IPS of FMA than the cascaded option 2 but
-the total IPS of FMA and shuffle is the smallest because the two intermediate matrix transpose between two options 
-are concelled out.
-However, the problem of the above combination is that
-it suffers a strong dependency problem of NT ICC part in option 2, 
-which has explained in the previous section. 
-The last combination is option 3 and option 3. Compared with the other two, this combination has a middle number of FMA and shuffle (two matrix transpose can be also cancelled out),
-but it avoids the dependency problem by passing the matrix version of samples.
-Thus, it is desirable to measure the clock cycles of all the above combinations.
+% Table \ref{table:number_of_instructions_in_assembly} shows the number of SIMD instructions per sample (IPS) for functions,
+% second order options and two cascaded second order options in assembly language. 
+% The ratio stands for the ratio of the reduced IPS,
+% which is computed by the difference 
+% between the IPS of $M{=}4$ and of $M{=}8$ over IPS of $M{=}4$. 
+% The minus sign basically tells the performance
+% of all algorithms can be improved by increasing the length of SIMD instruction.
+% One important observation is that the (absolute) ratio of FMAs for three options are increasing,
+% as well as the ratio of shuffle for option 2 and option 3. This explains our proposed algorithm by multi-block filtering 
+% relying on matrix of samples has a better scale with the length of SIMD vector than vector based block filtering algorithm.
+% We can also get the similar conclusion by comparing the ratio of FMAs among functions, e.g., NT ZIC and T ZIC, NT ICC and T ICC.
+
+\begin{table}[t]
+    \caption{The number of FMAs and shuffles (per sample) for cascaded 2 options in assembly code}  % title of Table
+    \centering % used for centering table
+    \setlength{\tabcolsep}{1.6pt}
+    \begin{tabular}{c|c|c|c|c|c|c} % centered columns (4 columns)
+    \hline\hline %inserts double horizontal lines
+    function & \multicolumn{3}{c|}{FMA} & \multicolumn{3}{c}{shuffle} \\ [0.4ex]
+    \cline{2-7}
+    name & $M{=}8$ & $M{=}16$ & ratio & $M{=}8$ & $M{=}16$ & ratio \\ [0.4ex] % inserts table
+    \hline
+    Option 1+Option 1 & 3.00 & 2.50 & -0.17 & 0.00 & 0.00 & $\backslash$ \\ [0.4ex]
+    Option 2+Option 2 & 1.41 & 0.73 & -0.48 & 1.56 & 1.02 & -0.35 \\ [0.4ex]
+    Option 3+Option 2 & 1.59 & 0.79 & -0.50 & 0.94 & 0.55 & -0.41 \\ [0.4ex]
+    Option 3+Option 3 & 1.78 & 0.85 & -0.52 & 1.06 & 0.59 & -0.44 \\ [1ex]
+    \hline
+    \end{tabular}
+    \label{table:number_of_instructions_of_cascaded2_in_assembly} % is used to refer this table in the text
+\end{table}
+
+Table \ref{table:number_of_instructions_of_cascaded2_in_assembly} shows the number of FMAs and shuffles
+for diff\-erent combinations of 2 cascaded second order filter options.
+The instructions for the first two combinations, i.e., option 1 plus option 1 and option 2 plus option 2,
+are simply double the numbers in Table \ref{table:number_of_instructions_of_functions_in_assembly}.
+While, the number of shuffles of the last two combinations are reduced by the number for two matrix transposes as expected.
+If we compare with the IPS for each combination,
+since option 2 has the smallest IPS of FMA, 
+the cascaded option 2 also achieves the smallest IPS of FMA. The mixed
+combination has the smallest IPS of FMAs and shuffles.
+However, the above combinations suffer the dependency probl\-em
+between vectors that we have explained.
+The advantage of cascaded option 3 is to avoid the dependency problem.
+Thus, it is meaningful to measure the clock cycles for all the above combinations
+for considering a higher order filtering system. 
+
+% In Table \ref{table:number_of_instructions_in_assembly}, we also record the number of SIMD instructions for different combinations of second order filter options.
+% It can be seen that since option 2 has the smallest IPS of FMA, the cascaded option 2 also has the smallest IPS of FMA; 
+% however, it suffers the largest IPS of shuffle because the big number of shuffle comes from four matrix transpose functions. 
+% Another combination is option 3 and option 2. This mixed combination has larger number of IPS of FMA than the cascaded option 2 but
+% the total IPS of FMA and shuffle is the smallest because the two intermediate matrix transpose between two options 
+% are concelled out.
+% However, the problem of the above combination is that
+% it suffers a strong dependency problem of NT ICC part in option 2, 
+% which has explained in the previous section. 
+% The last combination is option 3 and option 3. Compared with the other two, this combination has a middle number of FMA and shuffle (two matrix transpose can be also cancelled out),
+% but it avoids the dependency problem by passing the matrix version of samples.
+% Thus, it is desirable to measure the clock cycles of all the above combinations.
 
 
 \begin{table}[t]
     \caption{The number of clock cycles for functions and options in two types of micro-architectures}  % title of Table
     \centering % used for centering table
-    \setlength{\tabcolsep}{1.6pt}
+    \setlength{\tabcolsep}{1.1pt}
     \begin{tabular}{c|c|c|c|c} % centered columns (4 columns)
     \hline\hline %inserts double horizontal lines
     function & \multicolumn{2}{c|}{Haswell} & \multicolumn{2}{c}{Skylake} \\ [0.3ex]
@@ -120,9 +181,9 @@ Thus, it is desirable to measure the clock cycles of all the above combinations.
     Option 1 & 57$\sim$59 & 7.13$\sim$7.38 & 43$\sim$45 & 5.38$\sim$5.63 \\ [0.3ex]
     Option 2 & 212$\sim$214 & 3.31$\sim$3.34 & 179$\sim$181 & 2.80$\sim$2.83 \\ [0.3ex]
     Option 3 & 198$\sim$200 & 3.09$\sim$3.13 & 155$\sim$157 & 2.42$\sim$2.45 \\ [0.3ex]
-    Option 3+2 & 320$\sim$322 & 5.00$\sim$5.03 & 266$\sim$268 & 4.16$\sim$4.19 \\ [0.3ex]
-    Option 2+2 & 397$\sim$400 & 6.20$\sim$6.25 & 348$\sim$350 & 5.44$\sim$5.47 \\ [0.3ex]
-    Option 3+3 & 291$\sim$293 & 4.55$\sim$4.58 & 243$\sim$245 & 3.80$\sim$3.82 \\ [1ex]
+    Option 2+Option 2 & 397$\sim$400 & 6.20$\sim$6.25 & 348$\sim$350 & 5.44$\sim$5.47 \\ [0.3ex]
+    Option 3+Option 2 & 320$\sim$322 & 5.00$\sim$5.03 & 266$\sim$268 & 4.16$\sim$4.19 \\ [0.3ex]
+    Option 3+Option 3 & 291$\sim$293 & 4.55$\sim$4.58 & 243$\sim$245 & 3.80$\sim$3.82 \\ [1ex]
     \hline
     \end{tabular}
     \label{table:number_of_instructions_in_clock_cycles} % is used to refer this table in the text
@@ -148,55 +209,65 @@ Thus, it is desirable to measure the clock cycles of all the above combinations.
 % \end{table}
 
 Table \ref{table:number_of_instructions_in_clock_cycles} illustrates the number of clock cycles per sample (CPS) for functions and options
-under two different CPU based architectures. 
+under two different CPU based systems. 
 % when $M{=}8$. 
 We didn't count the number of clock cycles for each individual function in option 1 
-because NT ICC is a tiny function (only contains 2 FMAs),
-and the overhead may cause the testing cycles not accurate.
-By comparing with the cycle per sample (CPS) of option 2 and option 3, we now get that
-our proposed algorithm based on multi-block filtering is more efficient in real implementation.
-The cascaded form of option 3 reduces a few clock cycles compared with cascading option 2 in \cite{Jaewoo_09}
-for two reasons: one is that the former mitigates the dependency issue
-by extending it from the vector to matrix of samples; Second, 
-the necessary intermediate matrix transpose can be cancelled by the special arrangement of second order sections.  
-For the same reason, our proposed algorithm is good to build a higher order filter that 
-the increase of CPS by adding second order section will be smaller.
+because the NT ICC is a tiny function (only contains 2 FMAs),
+and the overhead may cause the testing cycles not accurate. 
+By looking at the CPS of option 2 and option 3 under two testing systems, we get that option 3
+is more efficient than option 2 in real implementation. Thus, besides the mitigation of
+the intermediate matrix transposes, the option 3 (our proposed second order filter) is better to
+form a higher order recursive filter.
+
+% By comparing with the cycle per sample (CPS) of option 2 and option 3, we now get that
+% our proposed algorithm based on multi-block filtering is more efficient in real implementation.
+% The cascaded form of option 3 reduces a few clock cycles compared with cascading option 2 in \cite{Jaewoo_09}
+% for two reasons: one is that the former mitigates the dependency issue
+% by extending it from the vector to matrix of samples; Second, 
+% the necessary intermediate matrix transpose can be cancelled by the special arrangement of second order sections.  
+% For the same reason, our proposed algorithm is good to build a higher order filter that 
+% the increase of CPS by adding second order section will be smaller.
 
 Even though from Table \ref{table:number_of_instructions}, we can get the IPS of FMAs and shuffles for option 2 are both lower than
 option 3, CPS is a more important metric in real implementation since it directly relates to the application's latency.
 Thus, the conclusion for building a higher order filter in the previous implementation section, gotten from only looking at IPS,
-should be corrected by all cascading the option 3. In other words, 
+should be modified by all cascading the option 3. In other words, 
 the most efficient way of building 
 a $L$th order recursive filter is that one matrix transpose at the beginning, $L/2$ group of T ZIC and T ICC in the middle and another matrix transpose at the end.
 
 \begin{figure}[t]
     \centerline{\includegraphics[width=3.3in]{real_time_test.png}}
-    \caption{The real time for single second order option of filtering 1M samples under different order of filters and architectures}
+    \caption{The real time for single second order option of filtering 1M samples under different order of filters and testing systems}
     \label{fig:Real_time_test}
   \end{figure}
 
 Figure \ref{fig:Real_time_test} illustrates the real time for one second order option
-of filtering 1.024M samples under different order of filters and micro-architectures. For example,
-the red bar under option 1 shows the average time for each option 1 of filtering 1.024M samples under 
-the fourth order system cascaded by 2 option 1 and with the Skylake CPU. 
-By comparing with any three bars of options in the same color, we see the time spent for options has a decreasing order
-by option 1, option 2 and 3, which fits the result of CPS in Table \ref{table:number_of_instructions_in_clock_cycles}. 
-Together with Table \ref{table:number_of_instructions_in_clock_cycles}, 
-we can also see the efficiency of our algorthm is improved by newer version of CPU.
-Furthermore, an important observation is that if we compare the gaps between time spent for different order of systems under option 1
-and those under option 3, we also verify the previous conclusion that our proposed algorithm will be more efficient for building a higher order filter.
+of filtering 1.024M samples under different order of filters and testing systems, e.g., 
+the red bar under the option 1 shows the average time for single option 1
+of filtering 1.024M samples under a 4th order filter cascaded by 2 option 1 and Skylake CPU based system.
+By comparing with any three bars in the same color under different options, 
+we see the time spent in a decreasing order fitting the results of CPS in Table \ref{table:number_of_instructions_in_clock_cycles}. 
+Also with Table \ref{table:number_of_instructions_in_clock_cycles}, 
+both results show the efficiency of the algorithm
+can be improved by newer version of CPU.
 By zooming in the bar with the shortest time in Figure \ref{fig:Real_time_test},
 it shows under a Skylake CPU based system, the throughput of a 12th order recursive filter built by
 cascading all second order options of our proposed algorithm can go up to above 260 MS$\slash$s, which is very efficient.
 
 
+% Furthermore, 
+% for each option 1 of filtering 1.024M samples under 
+% the fourth order system cascaded by 2 option 1 and with the Skylake CPU. 
 
-
-
-
-
-
-
+% By comparing with any three bars of options in the same color, we see the time spent for options has a decreasing order
+% by option 1, option 2 and 3, which fits the result of CPS in Table \ref{table:number_of_instructions_in_clock_cycles}. 
+% Together with Table \ref{table:number_of_instructions_in_clock_cycles}, 
+% we can also see the efficiency of our algorthm is improved by newer version of CPU.
+% Furthermore, an important observation is that if we compare the gaps between time spent for different order of systems under option 1
+% and those under option 3, we also verify the previous conclusion that our proposed algorithm will be more efficient for building a higher order filter.
+% By zooming in the bar with the shortest time in Figure \ref{fig:Real_time_test},
+% it shows under a Skylake CPU based system, the throughput of a 12th order recursive filter built by
+% cascading all second order options of our proposed algorithm can go up to above 260 MS$\slash$s, which is very efficient.
 
 
 
