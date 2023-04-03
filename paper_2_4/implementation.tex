@@ -1,82 +1,154 @@
-\section{Implementation of the Proposed Algorithm}
+\section{Realization of the Higher Order Filter}
 \label{sec:implementation}
 
 Having introduced the algorithms of building a second order recursive filter by seperating into 
-particular and homogeneous functions,
-in this section we systematically discuss and compare with 
-different combinations of functions of composing a second order or higher order recursive filter from implementation 
-perspective, i.e., the cost in the number of instructions. 
+particular and homogeneous functions, in this section, we move our attention on composing the higher
+order recursive filter by cascading second order sec-tions.
+In particular, we start at putting forward three different options of composing a second order filter
+based on the algo\-rithms that we discussed. The higher order filter is then built upon
+cascading different options of second order filter. 
+
+
+% Having introduced the algorithms of building a second order recursive filter by seperating into 
+% particular and homogeneous functions,
+% in this section we systematically discuss and compare with 
+% different combinations of functions of composing a second order or higher order recursive filter from implementation 
+% perspective, i.e., the cost in the number of instructions. 
 
 Three different options of composing the second order filter are given with the block diagram as follows:
 
-1. The option 1 (benchmark): The block filtering algorithm, which only accepts vector of samples. In particular, since the block filtering
-deals with non-transposed grid of samples (to distinguish from multi-block filtering), the basic functions of block filtering
-are simply named NT ZIC and NT ICC, where NT stands for non-transposed grid.
+1. The option 1 (benchmark): The block filtering algorithm, which only accepts a vector of samples. In particular, since the block filtering
+processes with non-transposed grid of samples (to distinguish from multi-block filtering), the basic functions of block filtering
+are simply named $\text{ZIC}_{\text{NT}}$ and $\text{ICC}_{\text{NT}}$, where NT stands for non-transposed grid.
+
+% \begin{circuitikz}[node distance=1em,>=latex]%
+%     \ctikzset{blocks/scale=0.8};
+%     \node[coordinate] (in) [label=left:{$s(t)$}] {};
+%     \node[adcshape] (adc) [right = of in, label=below:{$f_s=\frac{N}{T}$}] {};
+%     \node[twoportshape] (cp) [right = of adc, t={\parbox{10em}{\centering Strip\\Cyclic\\Prefix}}] {};
+%     \node[twoportshape] (sp) [right = of cp, t={S/P}] {};
+%     \node[twoportshape] (fft) [right = of sp, t={FFT}] {};
+%     \node[twoportshape] (eq) [right = of fft, t={Equalizer}] {};
+%     \node[twoportshape] (ps) [right = of eq, t={P/S}] {};
+%     \node[coordinate] (out) [right = of ps, label=right:{$s_{n}$}] {};
+    
+%     \draw[->] (in) -- (adc.w);
+%     \draw[->] (adc.e) -- (cp.w);
+%     \draw[->] (cp.e) -- (sp.w);
+%     \draw[->] (sp.e) -- (fft.w);
+%     \draw[->] (fft.e) -- (eq.w);
+%     \draw[->] (eq.e) -- (ps.w);
+%     \draw[->] (ps.e) -- (out);
+%   \end{circuitikz}
 
 \begin{equation*}
-    \label{eq:option_1}
-        \begin{array}{c|c|c|c|c}
-            \cline{2-2}
-            \cline{4-4}
-            \underrightarrow{\bm{x}} & \text{NT ZIC} & \underrightarrow{\bm{w}} & \text{NT ICC} & \underrightarrow{\bm{y}} \\
-            \cline{2-2}
-            \cline{4-4}
-    \end{array}
+    \label{eq:option1}
+    \begin{circuitikz}[node distance=1.8em,>=latex]%
+        \ctikzset{blocks/scale=1.2};
+        \node[coordinate] (in) [label=left:{}] {};
+        \node[twoportshape] (zic) [right = of in, t={$\text{ZIC}_{\text{NT}}$}] {};
+        \node[twoportshape] (icc) [right = of zic, t={$\text{ICC}_{\text{NT}}$}] {};
+        \node[coordinate] (out) [right = of icc, label=right:{}] {};
+
+        \draw[->] (in) -- (zic.w) node[near start, above]{$\bm{x}$};
+        \draw[->] (zic.e) -- (icc.w) node[midway, above]{$\bm{w}$};
+        \draw[->] (icc.e) -- (out) node[near end, above]{$\bm{y}$};
+    \end{circuitikz}
 \end{equation*}
 
-2. The option 2: Compared with the option 1, the particular part of recursive equation is replaced by our proposed multi-block filtering,
-which has the similar idea as in \cite{Jaewoo_09}.
+% \begin{equation*}
+%     \label{eq:option_11}
+%         \begin{array}{c|c|c|c|c}
+%             \cline{2-2}
+%             \cline{4-4}
+%             \underrightarrow{\bm{x}} & \text{NT ZIC} & \underrightarrow{\bm{w}} & \text{NT ICC} & \underrightarrow{\bm{y}} \\
+%             \cline{2-2}
+%             \cline{4-4}(M{\times}\bm{w})
+%     \end{array}
+% \end{equation*}
+
+2. The option 2: Compared with option 1, the particular part of recursive equation is replaced by our proposed multi-block filtering,
+which has the similar idea as \cite{Jaewoo_09}. The T in the box denotes the function of matrix transpose.
 
 \begin{equation*}
-    \label{eq:option_2}
-    \begin{aligned}
-        & \begin{array}{c|c|c|c|c|c|c|c|c}
-            \cline{2-2}
-            \cline{4-4}
-            \cline{6-6}
-            \cline{8-8}
-            \underrightarrow{\bm{X}} & \text{T} & \underrightarrow{\bm{X}^T} & \text{T ZIC} & \underrightarrow{\bm{W}^T} & \text{T} & \underrightarrow{\bm{W} (M \times \bm{w})} & \text{NT ICC} & \underrightarrow{\bm{y}} \\
-            \cline{2-2}
-            \cline{4-4}
-            \cline{6-6}
-            \cline{8-8}
-    \end{array}
-\end{aligned}
+    \label{eq:option2}
+    \begin{circuitikz}[node distance=1.7em,>=latex]%
+        \ctikzset{blocks/scale=1.2};
+        \node[coordinate] (in) [label=left:{}] {};
+        \node[twoportshape] (t1) [right = of in, t={T}] {};
+        \node[twoportshape] (zic) [right = of t1, t={$\text{ICC}_{\text{T}}$}] {};
+        \node[twoportshape] (t2) [right = of zic, t={T}] {};
+        \node[twoportshape] (icc) [right = of t2, xshift=0.9cm, t={$\text{ICC}_{\text{NT}}$}] {};
+        \node[coordinate] (out) [right = of icc, label=right:{}] {};
+
+        \draw[->] (in) -- (t1.w) node[near start, above]{$\bm{X}$};
+        \draw[->] (t1.e) -- (zic.w) node[midway, above]{$\bm{X}^T$};
+        \draw[->] (zic.e) -- (t2.w) node[midway, above]{$\bm{W}^T$};
+        \draw[->] (t2.e) -- (icc.w) node[midway, above]{$\bm{W}(M{\times}\bm{w})$};
+        \draw[->] (icc.e) -- (out) node[near end, above]{$\bm{y}$};
+    \end{circuitikz}
 \end{equation*}
 
-3. The option 3: Our proposed multi-block filtering algori\-thm, where both functions process transposed matrix of samples. 
+
+% \begin{equation*}
+%     \label{eq:option_22}
+%     \begin{aligned}
+%         & \begin{array}{c|c|c|c|c|c|c|c|c}
+%             \cline{2-2}
+%             \cline{4-4}
+%             \cline{6-6}
+%             \cline{8-8}
+%             \underrightarrow{\bm{X}} & \text{T} & \underrightarrow{\bm{X}^T} & \text{T ZIC} & \underrightarrow{\bm{W}^T} & \text{T} & \underrightarrow{\bm{W} (M \times \bm{w})} & \text{NT ICC} & \underrightarrow{\bm{y}} \\
+%             \cline{2-2}
+%             \cline{4-4}
+%             \cline{6-6}
+%             \cline{8-8}
+%     \end{array}
+% \end{aligned}
+% \end{equation*}
+
+3. The option 3: Our proposed multi-block filtering algorith\-m, where both of functions process with transposed matrix of samples. 
 
 \begin{equation*}
-    \label{eq:option_3}
-    \begin{aligned}
-        & \begin{array}{c|c|c|c|c|c|c|c|c}
-            \cline{2-2}
-            \cline{4-4}
-            \cline{6-6}
-            \cline{8-8}
-            \underrightarrow{\bm{X}} & \text{T} & \underrightarrow{\bm{X}^T} & \text{T ZIC} & \underrightarrow{\bm{W}^T} & \text{T ICC} & \underrightarrow{\bm{Y}^T} & \text{T} & \underrightarrow{\bm{Y}} \\
-            \cline{2-2}
-            \cline{4-4}
-            \cline{6-6}
-            \cline{8-8}
-    \end{array}
-\end{aligned}
+    \label{eq:option3}
+    \begin{circuitikz}[node distance=1.8em,>=latex]%
+        \ctikzset{blocks/scale=1.2};
+        \node[coordinate] (in) [label=left:{}] {};
+        \node[twoportshape] (t1) [right = of in, t={T}] {};
+        \node[twoportshape] (zic) [right = of t1, t={$\text{ICC}_{\text{T}}$}] {};
+        \node[twoportshape] (icc) [right = of zic, t={$\text{ICC}_{\text{T}}$}] {};
+        \node[twoportshape] (t2) [right = of icc, t={T}] {};
+        \node[coordinate] (out) [right = of t2, label=right:{}] {};
+
+        \draw[->] (in) -- (t1.w) node[near start, above]{$\bm{X}$};
+        \draw[->] (t1.e) -- (zic.w) node[midway, above]{$\bm{X}^T$};
+        \draw[->] (zic.e) -- (icc.w) node[midway, above]{$\bm{W}^T$};
+        \draw[->] (icc.e) -- (t2.w) node[midway, above]{$\bm{Y}^T$};
+        \draw[->] (t2.e) -- (out) node[near end, above]{$\bm{Y}$};
+    \end{circuitikz}
 \end{equation*}
+% \begin{equation*}
+%     \label{eq:option_33}
+%     \begin{aligned}
+%         & \begin{array}{c|c|c|c|c|c|c|c|c}
+%             \cline{2-2}
+%             \cline{4-4}
+%             \cline{6-6}
+%             \cline{8-8}
+%             \underrightarrow{\bm{X}} & \text{T} & \underrightarrow{\bm{X}^T} & \text{T ZIC} & \underrightarrow{\bm{W}^T} & \text{T ICC} & \underrightarrow{\bm{Y}^T} & \text{T} & \underrightarrow{\bm{Y}} \\
+%             \cline{2-2}
+%             \cline{4-4}
+%             \cline{6-6}
+%             \cline{8-8}
+%     \end{array}
+% \end{aligned}
+% \end{equation*}
 % In the above block diagrams,
 The notations of the data flow between functions in lowercase letters represent vector of samples,
-while the uppercase letters mean matrix of samples. The T in box denotes the function of matrix transpose.
-In option 2, $M \times \bm{w}$ means $M$ numbers of vector ($\bm{w}$) of samples.
-Since the NT ICC only accepts vector of samples, the way it works is simply to passing the vectors in the matrix by order.
-
-
-The number of FMAs, shuffles, broadcast and load instru\-ctions for functions 
-and options are recorded in Table \ref{table:number_of_instructions}.
-Due to the different sizes of samples processed in the different functions, 
-the number of instructions are transferred to instructions per sample (IPS) for fair comparison.
-The broadcast operation happens at when a FMA is taken between a scalar and vector, e.g.,
-in \eqref{eq:block_filtering}, $\bm{A}_{[0]} \times \bm{y_p}[0]$, $\bm{y_p}[0]$ should be first broadcasted to
-a vector in the same length of $\bm{A}_{[0]}$ including all elements of $\bm{y_p}[0]$, then multiply.
-Furthermore, the number of store per sample for each function is identical as $1/M$, thus omitted. 
+while the uppercase letters denote matrix of samples. 
+% The T in box denotes the function of matrix transpose.
+In option 2, $M {\times} \bm{w}$ means $M$ number of vector ($\bm{w}$) of samples.
+Since the $\bm{\text{ICC}_{\text{NT}}}$ only accepts vector of samples, the way it works is simply to passing the vectors in the matrix by order.
 
 \begin{table}[t]
     \caption{The number of SIMD instructions (per sample) for functions and options in theory}  % title of Table
@@ -86,11 +158,11 @@ Furthermore, the number of store per sample for each function is identical as $1
     \hline\hline %inserts double horizontal lines
     function name & FMA & shuffle & broadcast & load \\ [0.5ex] % inserts table
     \hline % inserts single horizontal line
-    NT ZIC & $1{+}\frac{2}{M}$ & 0 & $1{+}\frac{2}{M}$ & $1{+}\frac{5}{M}$ \\ [0.5ex]
-    NT ICC & $\frac{2}{M}$ & 0 & $\frac{2}{M}$ & $\frac{5}{M}$ \\ [0.5ex]
-    T ZIC & $\frac{4}{M}{-}\frac{3}{M^2}$ & $\frac{2}{M^2}$ & $\frac{4}{M^2}$ & $\frac{1}{M}{+}\frac{6}{M^2}$ \\ [0.5ex]
-    T ICC & $\frac{4\log_2M}{M^2}{+}\frac{2}{M}$ & $\frac{2\log_2M{+}2}{M^2}$ & $\frac{2}{M}{-}\frac{2}{M^2}$ & $\frac{1}{M}{+}\frac{4\log_2M{+}8}{M^2}$ \\ [0.5ex]
-    Transpose & 0 & $\frac{\log_2M}{M}$ & 0 & $\frac{1}{M}$ \\ [0.5ex]
+    $\text{ZIC}_{\text{NT}}$ & $1{+}\frac{2}{M}$ & 0 & $1{+}\frac{2}{M}$ & $1{+}\frac{5}{M}$ \\ [0.5ex]
+    $\text{ICC}_{\text{NT}}$ & $\frac{2}{M}$ & 0 & $\frac{2}{M}$ & $\frac{5}{M}$ \\ [0.5ex]
+    $\text{ZIC}_{\text{T}}$ & $\frac{4}{M}{-}\frac{3}{M^2}$ & $\frac{2}{M^2}$ & $\frac{4}{M^2}$ & $\frac{1}{M}{+}\frac{6}{M^2}$ \\ [0.5ex]
+    $\text{ICC}_{\text{T}}$ & $\frac{4\log_2M}{M^2}{+}\frac{2}{M}$ & $\frac{2\log_2M{+}2}{M^2}$ & $\frac{2}{M}{-}\frac{2}{M^2}$ & $\frac{1}{M}{+}\frac{4\log_2M{+}8}{M^2}$ \\ [0.5ex]
+    T & 0 & $\frac{\log_2M}{M}$ & 0 & $\frac{1}{M}$ \\ [0.5ex]
     Option 1 & $1{+}\frac{4}{M}$ & 0 & $1{+}\frac{4}{M}$ & $1{+}\frac{9}{M}$ \\ [0.5ex]
     Option 2 & $\frac{6}{M}{-}\frac{3}{M^2}$ & $\frac{2\log_2M}{M}{+}\frac{2}{M^2}$ & $\frac{2}{M}{+}\frac{4}{M^2}$ & $\frac{3}{M}{+}\frac{8}{M^2}$ \\ [0.5ex]
     Option 3 & $\frac{6}{M}{+}\frac{4\log_2M{-}3}{M^2}$ & $\frac{2\log_2M}{M}{+}\frac{2\log_2M+4}{M^2}$ & $\frac{2}{M}{+}\frac{2}{M^2}$ & $\frac{1}{M}{+}\frac{4\log_2M{+}14}{M^2}$ \\ [1ex]
@@ -99,60 +171,134 @@ Furthermore, the number of store per sample for each function is identical as $1
     \label{table:number_of_instructions} % is used to refer this table in the text
 \end{table}
 
-From Table \ref{table:number_of_instructions}, we see the
-option 1 is relatively efficient when the processor is restricted to only deal with shorter length of SIMD instruction.
-For modern CPUs, option 2 is the cheapest at the number of FMAs plus shuffles.
-The feature of option 3 
-is that two matrix transposes are located at the head and tail. 
-If build a higher order recursive filter by cascading option 3,
-the matrix transpose at the head of current section can be cancelled by the matrix transpose at the tail of previous section. 
-Thus, the intermediate second order sections of option 3
-only needs to take ZIC and ICC.
-Then, the computing complexity of one section is reduce from $O(2\log_2M/M)$ to $O(6/M)$.
 
-Based on the above discussion, we can see that our proposed algorithm is very suitable for building cascaded form of higher order recursive filter.
-If the number of instructions is the only consideration, then for a $L$th order recursive filter,
-the cheapest combination should be $L/2{-}1$ second order filters of option 3 followed by one option 2.
-For example, the block diagram of composing a 10th order recursive filter can be given by
+The number of FMAs, shuffles, broadcast and load instru\-ctions for functions 
+and options are recorded in Table \ref{table:number_of_instructions}.
+Due to the different sizes of samples processed in the different functions, 
+the number of instructions are transferred to instructions per sample (IPS) for fair comparison.
+The broadcast operation happens at when a FMA is taken between a scalar and vector, e.g.,
+in \eqref{eq:block_filtering}, $\bm{A}_{[0]}\bm{y_p}[0]$, $\bm{y_p}[0]$ should be first broadcasted to
+a vector in the same length of $\bm{A}_{[0]}$ including all the elements of $\bm{y_p}[0]$, then multiply.
+Furthermore, the number of store per sample for each function is identical as $1/M$, thus omitted. 
 
-\begin{equation*}
-    \label{eq:4_cascaded_option_3_1_option_2}
-    \begin{aligned}
-    & \arraycolsep=2.3pt\def\arraystretch{1.0}
-    \begin{array}{c|c|c|c|c|c|c|c|c|c|}
-        \cline{2-2}
-        \cline{4-4}
-        \cline{6-6}
-        \cline{8-8}
-        \cline{10-10}
-        \underrightarrow{\bm{X}_{(1)}} & \text{T} & \underrightarrow{\bm{X}_{(1)}^T} & \text{T ZIC} & \underrightarrow{\bm{W}_{(1)}^T} & \text{T ICC} & \underrightarrow{\bm{Y}_{(1)}^T} & \text{T ZIC} & \underrightarrow{\bm{W}_{(2)}^T} & \text{T ICC} \\
-        \cline{2-2}
-        \cline{4-4}
-        \cline{6-6}
-        \cline{8-8}
-        \cline{10-10}
-    \end{array} \\
-    & \arraycolsep=2.3pt\def\arraystretch{1.0} 
-    \begin{array}{ccc|c|c|c|c|c|c}
-        \cline{4-4}
-        \cline{6-6}
-        \cline{8-8}
-        % \cline{10-10}
-        \underrightarrow{\bm{Y}_{(2)}^T} & \cdots & \underrightarrow{\bm{Y}_{(4)}^T} & \text{T ZIC} & \underrightarrow{\bm{W}_{(5)}^T} & \text{T} & \underrightarrow{\bm{W}_{(5)}(M \times \bm{w}_{(5)})} & \text{NT ICC} & \underrightarrow{\bm{Y}_{(5)}} \\
-        \cline{4-4}
-        \cline{6-6}
-        \cline{8-8}
-        % \cline{10-10}
-    \end{array} \\
-\end{aligned}
-\end{equation*}
 
-However, there is one last issue should be considered at the (NT) ICC part of option 2,
-i.e., compared with matrix filtering, the vector filtering suffers a strong dependency problem since 
-the computation of current vector relies on the last two samples of previous output vector that is not reflected from the number of instructions.
-Thus, the solution is, not only to measuring the efficiency of the functions or options 
-by looking at the number of instructions, but going deeper to see the clock cycles, which 
+We observe 
+% from Table \ref{table:number_of_instructions}
+that
+the option 1 is relatively efficient when the processor is restricted to only deal with shorter length of SIMD instructions.
+For modern CPUs, option 2 is the cheapest at the number of FMA plus shuffle.
+The feature of option 3 is its structure, i.e.,
+the two matrix transposes are located at the head and tail. 
+If building the higher order filter by cascading option 3,
+the matrix transpose at the head of current section can be cancelled by
+the other one at the tail of previous section.
+Thus, the intermediate option 3 only takes the functions of ZIC and ICC.
+The computing complexity of one section is reduce from $O(\log_2M/M)$ to $O(1/M)$.
+Compared with the computing co-mplexities $O(\log_2M/M)$ for option 2 and 1 for option 1,
+it can be seen our proposed algorithm
+is more suitable for composing cascaded form of higher order recursive filter.
+
+% the matrix transpose at the head of current section can be cancelled by the matrix transpose at the tail of previous section. 
+% Thus, the intermediate second order sections of option 3
+% only needs to take ZIC and ICC.
+% Then, the computing complexity of one section is reduce from $O(2\log_2M/M)$ to $O(6/M)$.
+
+\begin{figure}[t]
+    \centerline{\includegraphics[width=3.3in]{poles_compare_zoom_5.png}}
+    \caption{The zero-pole plot of a 10th order recursive filter in direct and cascaded form with rounding error}
+    \label{fig:poles_compare_zoom}
+\end{figure}
+
+Thus, if we compare with the number of FMAs and shuffles,
+then for building a $L(\geq 2)$th order recursive filter,
+the smallest combination could be $L/2{-}1$ option 3 followed by one option 2.
+However, there is one problem should be discussed,
+i.e., the block filtering of the ICC part for option 2 inherently suffers a strong dependency
+problem between vectors compared with multi-block filtering, which cannot be reflected by the number of instructions. 
+Related to the parallel processor architecture that we used in this paper,
+the dependency problem is going to cause the pipeline stalling.
+Furthermore, since the superscalar allows 
+multiple instructions to be executed simultaneously,
+the clock cycles of some instruction can be overlapped by other 
+instructions.
+Thus, counting the number of instructions is not absolute accurate.
+Due to the same reason, all the discussions of algorithms' efficiency
+related to the number of instructions ignore the broadcast and load 
+in this paper
+because they take smaller clock cycles
+than FMA and shuffle, and the cycles
+will be occupied by FMAs and shuffles when
+multiple instructions are executed.  
+In conclusion, to compare with the performance of the algorithms, 
+addtion with the number of instructions,
+we should go further to see the clock cycles that
 directly points to the application's latency.
+
+
+% Thus, if the number of instructions is the only consideration, then
+% for building a $L$th order recursive filter,
+% the cheapest co-mbination could be $L/2{-}1$ option 3 followed by one option 2.
+% However, there is one problem should be discussed,
+% i.e., the vector filtering of the ICC part for option 2 inherently suffers a strong dependency
+% problem between vectors compared with the matrix filtering, which is not reflected by the number
+% of instructions. 
+% If related to the parallel architecture based proc-essor 
+% that we used in this paper,
+% the dependency problem may cause the pipeline stalling.
+% Furthermore, since the superscalar pro\-cessor allows multiple instructions to be executed 
+% simultaneously,
+% the clock cycle of some instruction will be overlapped 
+% by other instructions, 
+% thus, counting the number of instructions is not absolute accurate.
+% The solution is, 
+% besides the number of instructions,
+% we should go further to see the clock cycles that
+% directly points to the application's latency.
+
+
+% Based on the above discussion, we can see that our proposed algorithm is very suitable for building cascaded form of higher order recursive filter.
+% If the number of instructions is the only consideration, then for a $L$th order recursive filter,
+% the cheapest combination should be $L/2{-}1$ second order filters of option 3 followed by one option 2.
+% For example, the block diagram of composing a 10th order recursive filter can be given by
+
+% \begin{equation*}
+%     \label{eq:4_cascaded_option_3_1_option_2}
+%     \begin{aligned}
+%     & \arraycolsep=2.3pt\def\arraystretch{1.0}
+%     \begin{array}{c|c|c|c|c|c|c|c|c|c|}
+%         \cline{2-2}
+%         \cline{4-4}
+%         \cline{6-6}
+%         \cline{8-8}
+%         \cline{10-10}
+%         \underrightarrow{\bm{X}_{(1)}} & \text{T} & \underrightarrow{\bm{X}_{(1)}^T} & \text{T ZIC} & \underrightarrow{\bm{W}_{(1)}^T} & \text{T ICC} & \underrightarrow{\bm{Y}_{(1)}^T} & \text{T ZIC} & \underrightarrow{\bm{W}_{(2)}^T} & \text{T ICC} \\
+%         \cline{2-2}
+%         \cline{4-4}
+%         \cline{6-6}
+%         \cline{8-8}
+%         \cline{10-10}
+%     \end{array} \\
+%     & \arraycolsep=2.3pt\def\arraystretch{1.0} 
+%     \begin{array}{ccc|c|c|c|c|c|c}
+%         \cline{4-4}
+%         \cline{6-6}
+%         \cline{8-8}
+%         % \cline{10-10}
+%         \underrightarrow{\bm{Y}_{(2)}^T} & \cdots & \underrightarrow{\bm{Y}_{(4)}^T} & \text{T ZIC} & \underrightarrow{\bm{W}_{(5)}^T} & \text{T} & \underrightarrow{\bm{W}_{(5)}(M \times \bm{w}_{(5)})} & \text{NT ICC} & \underrightarrow{\bm{Y}_{(5)}} \\
+%         \cline{4-4}
+%         \cline{6-6}
+%         \cline{8-8}
+%         % \cline{10-10}
+%     \end{array} \\
+% \end{aligned}
+% \end{equation*}
+
+% However, there is one last issue should be considered at the (NT) ICC part of option 2,
+% i.e., compared with matrix filtering, the vector filtering suffers a strong dependency problem since 
+% the computation of current vector relies on the last two samples of previous output vector that is not reflected from the number of instructions.
+% Thus, the solution is, not only to measuring the efficiency of the functions or options 
+% by looking at the number of instructions, but going deeper to see the clock cycles, which 
+% directly points to the application's latency.
 
 % measuring the efficiency of the options by just looking at the number of instructions,  
 % we should go deeper to see the clock cycles of the functions and options, which directly points to the 
