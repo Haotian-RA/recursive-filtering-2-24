@@ -1,8 +1,8 @@
 \section{Introduction}
 \label{sec:introduction}
 
-Recursive filter are used frequently in digital signal processing.
-The main advantage of a recursive filter is their efficiency in implementation.
+Recursive filters are used frequently in digital signal processing.
+The main advantage of a recursive filter is the low computation efficiency in implementation.
 In order to meet the same specification in terms of passband, stopband, ripple, or roll-off,
 recursive filter needs a smaller number of taps than non-recursive filter, which implies
 a correspondingly fewer number of computations per unit time. 
@@ -14,7 +14,7 @@ To overcome the difficulty, the normal way is to dealing with the recursive equa
 particular and homogeneous solutions.
 One previous method based on SIMD operation includes block filtering \cite{Sung_86}, 
 which basically computes consecutive samples in one SIMD vector by matrix multiplication. 
-The number of arithmetric operation per sample is regardless of the block length. Thus, the block filtering method achieves
+The number of arithmetic operation per sample is regardless of the block length. Thus, the block filtering method achieves
 intra-block parallelism. 
 
 One more efficient algorithm that exploits inter-block parallelism is to solve the particular part of recursive equation via multiple blocks \cite{Jaewoo_09}.
